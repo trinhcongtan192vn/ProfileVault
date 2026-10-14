@@ -1,12 +1,16 @@
 /**
  * Bộ ánh xạ endpoint của automation API Fury — NƠI DUY NHẤT biết đường dẫn và định dạng JSON của Fury.
  *
- * TODO(SPIKE-P2): toàn bộ đường dẫn, phương thức và tên trường dưới đây là GIẢ ĐỊNH (docs/progress.md G8).
- * Sau spike P2 chỉ sửa file này (và FakeFury ở src/testing/fake-fury.ts); giao diện FuryClient không đổi.
+ * Đã xác minh ở SPIKE-P2 (2026-10-14, Fury 0.3.22): mã nguồn agent/src/http.rs + agent/src/ipc.rs và gọi thật
+ * `GET /v1/status`, `GET /v1/profiles`, `GET /v1/personas`. API bật bằng biến môi trường `FURY_API_PORT` của
+ * `fury-agent serve`, chỉ nghe 127.0.0.1, bearer token trong `<thư mục dữ liệu Fury>/api-token`, từ chối
+ * request có `Origin`. Mọi phản hồi có dạng `{ ok: true, data }`; lỗi là `{ error, message }` với HTTP 400/401/403/404.
+ * Chỉ có 6 endpoint: không có lấy một profile, trạng thái một profile hay kiểm exit proxy.
  */
 import { z } from 'zod';
 import {
   AsnTypeSchema,
+  PvError,
   type ExitInfo,
   type FuryCapabilitySource,
   type FuryLaunchResult,
@@ -14,12 +18,14 @@ import {
   type FuryProfileStatus,
   type FuryProfileSummary,
 } from '@sctech/profilevault-contract';
-import { badResponse } from '../errors.js';
+import { badResponse, profileNotFound } from '../errors.js';
 
-export type FuryCapability = 'health' | 'listProfiles' | 'getProfile' | 'getStatus' | 'launch' | 'stop' | 'checkExit';
+export type FuryCapability = 'health' | 'listProfiles' | 'getProfile' | 'getStatus' | 'launch' | 'stop' | 'checkExit' | 'personas';
 
 export interface ParseContext {
   now: string;
+  /** Tham số của lời gọi (vd `profileId` khi endpoint trả cả danh sách). */
+  params?: unknown;
 }
 
 export interface EndpointSpec<P, R> {
@@ -34,6 +40,14 @@ export interface MissingEndpoint {
   source: 'missing';
 }
 
+/** Persona trong danh mục Fury (`GET /v1/personas`). */
+export interface FuryPersonaInfo {
+  id: string;
+  os?: string;
+  gpu?: string;
+  screen?: { width: number; height: number };
+}
+
 export interface FuryEndpointMap {
   health: EndpointSpec<void, { version: string }> | MissingEndpoint;
   listProfiles: EndpointSpec<void, FuryProfileSummary[]> | MissingEndpoint;
@@ -42,17 +56,17 @@ export interface FuryEndpointMap {
   launch: EndpointSpec<{ profileId: string; cdp: true }, FuryLaunchResult> | MissingEndpoint;
   stop: EndpointSpec<{ profileId: string }, void> | MissingEndpoint;
   checkExit: EndpointSpec<{ profileId: string }, ExitInfo> | MissingEndpoint;
+  /** Danh mục persona, để bổ sung OS/GPU/màn hình cho `getProfile`. */
+  personas: EndpointSpec<void, FuryPersonaInfo[]> | MissingEndpoint;
   /** Năng lực không có endpoint riêng, suy từ dữ liệu trả về. */
   meta: {
-    /** `getProfile` có trả `seed` không. TODO(SPIKE-P2) */
+    /** `getProfile` có trả `seed` không. */
     seed: FuryCapabilitySource;
     /** `checkExit` có trả `asnType` không. TODO(SPIKE-P5) */
     asnType: FuryCapabilitySource;
+    /** Sửa văn bản JSON trước khi parse (vd số nguyên 64 bit → chuỗi). */
+    normalizeJson?: (text: string) => string;
   };
-}
-
-function enc(id: string): string {
-  return encodeURIComponent(id);
 }
 
 function issuesOf(err: z.ZodError): { path: string; message: string }[] {
@@ -65,65 +79,67 @@ function parseWith<T>(cap: FuryCapability, schema: z.ZodType<T>, raw: unknown): 
   return r.data;
 }
 
-function osFamilyOf(v: unknown): FuryProfileSummary['osFamily'] {
+export function osFamilyOf(v: unknown): FuryProfileSummary['osFamily'] {
   if (typeof v !== 'string') return undefined;
   const s = v.toLowerCase();
-  if (s.includes('win')) return 'windows';
-  if (s.includes('mac') || s.includes('darwin')) return 'macos';
+  if (s.startsWith('win') || s.includes('windows')) return 'windows';
+  if (s.startsWith('mac') || s.includes('macos') || s.includes('darwin')) return 'macos';
   return 'other';
 }
 
-// ---- Schema thô (lỏng, passthrough) — TODO(SPIKE-P2) tên trường giả định ----
+/** `{ ok: true, data }` → `data`. */
+function envelope<T extends z.ZodType>(data: T) {
+  return z.object({ ok: z.literal(true), data });
+}
+
+/**
+ * `fp_seed` là u64 (vd 7021075368349779267) — vượt Number.MAX_SAFE_INTEGER, JSON.parse làm tròn.
+ * Đổi thành chuỗi trước khi parse để luật D3/E2 so đúng seed.
+ */
+export function quoteBigSeeds(text: string): string {
+  return text.replace(/("fp_seed"\s*:\s*)(-?\d+)/g, '$1"$2"');
+}
+
+// ---- Schema thô (passthrough) — đã xác minh với Fury 0.3.22 ----
 
 const RawStatus = z.object({ version: z.string() }).passthrough();
 
-const RawProfileSummary = z
+const RawProfile = z
   .object({
-    id: z.union([z.string(), z.number()]).transform(String),
+    id: z.string().min(1),
     name: z.string().default(''),
-    tags: z.array(z.string()).optional(),
-    personaId: z.string().optional(),
-    persona_id: z.string().optional(),
-    os: z.string().optional(),
+    tags: z.array(z.string()).nullish(),
+    persona_id: z.string().nullish(),
+    fp_seed: z.union([z.string(), z.number()]).nullish(),
+    timezone: z.string().nullish(),
+    languages: z.array(z.string()).nullish(),
+    // Chỉ lấy định danh proxy; đối tượng `proxy` (có thể kèm thông tin đăng nhập) BỊ BỎ (SPEC-01 §2, Constitution IV)
+    proxy_id: z.string().nullish(),
+    running: z.boolean().optional(),
+    // MachineOverrides (shared-rs/src/overrides.rs): chỉ đọc trường cần cho kiểm nhất quán
+    overrides: z
+      .object({
+        geolocation: z.object({ latitude: z.number(), longitude: z.number() }).nullish(),
+        screen: z.object({ width: z.number().int(), height: z.number().int() }).passthrough().nullish(),
+        gpu: z.string().nullish(),
+        cores: z.number().int().nullish(),
+        memory_gb: z.number().nullish(),
+      })
+      .passthrough()
+      .nullish(),
   })
   .passthrough();
+type RawProfileT = z.infer<typeof RawProfile>;
+
+const RawProfiles = envelope(z.array(RawProfile));
 
 const RawPersona = z
-  .object({
-    platform: z.string().optional(),
-    os: z.string().optional(),
-    userAgent: z.string().optional(),
-    gpuRenderer: z.string().optional(),
-    screen: z.object({ width: z.number(), height: z.number() }).optional(),
-    hardwareConcurrency: z.number().optional(),
-    deviceMemory: z.number().optional(),
-  })
+  .object({ id: z.string(), os: z.string().nullish(), gpu: z.string().nullish(), screen: z.string().nullish() })
   .passthrough();
 
-const RawProfileDetail = RawProfileSummary.extend({
-  persona: RawPersona.optional(),
-  seed: z.union([z.string(), z.number()]).transform(String).optional(),
-  timezone: z.string().optional(),
-  languages: z.array(z.string()).optional(),
-  geolocation: z
-    .object({ mode: z.enum(['off', 'auto', 'manual']).optional(), lat: z.number().optional(), lon: z.number().optional() })
-    .passthrough()
-    .optional(),
-  webrtc: z.string().optional(),
-  webrtcMode: z.string().optional(),
-  // Chỉ lấy định danh; host/username/password BỊ BỎ (SPEC-01 §2, Constitution IV)
-  proxy: z.union([z.string(), z.object({ id: z.union([z.string(), z.number()]).optional(), name: z.string().optional() }).passthrough()]).optional(),
-});
-
-const RawProfileStatus = z
-  .object({
-    open: z.boolean(),
-    via: z.enum(['app', 'api', 'mcp', 'unknown']).optional(),
-    since: z.string().optional(),
-  })
+const RawLaunch = z
+  .object({ pid: z.number().int().optional(), ws_endpoint: z.string().min(1).optional() })
   .passthrough();
-
-const RawLaunch = z.object({ cdpEndpoint: z.string().min(1), sessionRef: z.string().optional() }).passthrough();
 
 const RawExit = z
   .object({
@@ -139,124 +155,138 @@ const RawExit = z
   })
   .passthrough();
 
-function toSummary(raw: z.infer<typeof RawProfileSummary>): FuryProfileSummary {
+function toSummary(raw: RawProfileT): FuryProfileSummary {
   const out: FuryProfileSummary = { id: raw.id, name: raw.name, tags: raw.tags ?? [] };
-  const personaId = raw.personaId ?? raw.persona_id;
-  if (personaId !== undefined) out.personaId = personaId;
-  const osFamily = osFamilyOf(raw.os);
-  if (osFamily !== undefined) out.osFamily = osFamily;
+  if (raw.persona_id) {
+    out.personaId = raw.persona_id;
+    const f = osFamilyOf(raw.persona_id);
+    if (f !== undefined) out.osFamily = f;
+  }
   return out;
 }
 
-function toDetail(raw: z.infer<typeof RawProfileDetail>): FuryProfileDetail {
+function toDetail(raw: RawProfileT): FuryProfileDetail {
   const out: FuryProfileDetail = toSummary(raw);
-  if (raw.persona) {
-    const platform = raw.persona.platform ?? raw.persona.os;
-    if (platform !== undefined) {
-      out.persona = { platform };
-      if (raw.persona.userAgent !== undefined) out.persona.userAgent = raw.persona.userAgent;
-      if (raw.persona.gpuRenderer !== undefined) out.persona.gpuRenderer = raw.persona.gpuRenderer;
-      if (raw.persona.screen !== undefined) out.persona.screen = raw.persona.screen;
-      if (raw.persona.hardwareConcurrency !== undefined) out.persona.hardwareConcurrency = raw.persona.hardwareConcurrency;
-      if (raw.persona.deviceMemory !== undefined) out.persona.deviceMemory = raw.persona.deviceMemory;
-      if (out.osFamily === undefined) {
-        const f = osFamilyOf(platform);
-        if (f !== undefined) out.osFamily = f;
-      }
-    }
-  }
-  if (raw.seed !== undefined) out.seed = raw.seed;
-  if (raw.timezone !== undefined) out.timezone = raw.timezone;
-  if (raw.languages !== undefined) out.languages = raw.languages;
-  if (raw.geolocation?.mode !== undefined) {
-    out.geolocation = { mode: raw.geolocation.mode };
-    if (raw.geolocation.lat !== undefined) out.geolocation.lat = raw.geolocation.lat;
-    if (raw.geolocation.lon !== undefined) out.geolocation.lon = raw.geolocation.lon;
-  }
-  const webrtc = raw.webrtcMode ?? raw.webrtc;
-  if (webrtc !== undefined) out.webrtcMode = webrtc;
-  if (typeof raw.proxy === 'string') out.proxyRef = raw.proxy;
-  else if (raw.proxy && typeof raw.proxy === 'object') {
-    const ref = raw.proxy.id !== undefined ? String(raw.proxy.id) : raw.proxy.name;
-    if (ref !== undefined) out.proxyRef = ref;
+  if (raw.fp_seed !== undefined && raw.fp_seed !== null) out.seed = String(raw.fp_seed);
+  // null = theo quốc gia exit của proxy (Fury tự suy) → để trống, không đoán
+  if (raw.timezone) out.timezone = raw.timezone;
+  if (raw.languages && raw.languages.length > 0) out.languages = raw.languages;
+  if (raw.proxy_id) out.proxyRef = raw.proxy_id;
+  // Không có override → Fury đặt geolocation theo quốc gia exit của proxy
+  const geo = raw.overrides?.geolocation;
+  out.geolocation = geo ? { mode: 'manual', lat: geo.latitude, lon: geo.longitude } : { mode: 'auto' };
+  // Override màn hình/GPU thắng giá trị của persona trong danh mục (HttpFuryClient.getProfile ghép sau)
+  const ov = raw.overrides;
+  if (ov?.screen || ov?.gpu || ov?.cores || ov?.memory_gb) {
+    out.persona = { platform: raw.persona_id ?? 'unknown' };
+    if (ov.screen) out.persona.screen = { width: ov.screen.width, height: ov.screen.height };
+    if (ov.gpu) out.persona.gpuRenderer = ov.gpu;
+    if (ov.cores) out.persona.hardwareConcurrency = ov.cores;
+    if (ov.memory_gb) out.persona.deviceMemory = ov.memory_gb;
   }
   return out;
 }
 
-/** Bộ ánh xạ mặc định — TODO(SPIKE-P2): xác minh từng route với Fury thật. */
+/** `"1920×1080"` → `{ width, height }`. */
+export function parseScreen(s: string | null | undefined): { width: number; height: number } | undefined {
+  const m = /(\d+)\s*[×xX*]\s*(\d+)/.exec(s ?? '');
+  return m ? { width: Number(m[1]), height: Number(m[2]) } : undefined;
+}
+
+function profileIdOf(ctx: ParseContext): string {
+  return (ctx.params as { profileId?: string } | undefined)?.profileId ?? '';
+}
+
+function findProfile(cap: 'getProfile' | 'getStatus', raw: unknown, ctx: ParseContext): RawProfileT {
+  const id = profileIdOf(ctx);
+  const p = parseWith(cap, RawProfiles, raw).data.find((x) => x.id === id);
+  if (!p) throw profileNotFound(id);
+  return p;
+}
+
+/** Chuẩn hóa kết quả kiểm exit (dùng khi có nguồn checkExit — TODO(SPIKE-P5)). */
+export function parseExitInfo(raw: unknown, ctx: ParseContext): ExitInfo {
+  const e = parseWith('checkExit', RawExit, raw);
+  const asnType = e.asnType !== undefined ? AsnTypeSchema.safeParse(e.asnType.toLowerCase()) : undefined;
+  const out: ExitInfo = { ok: e.error === undefined && e.ip !== undefined, checkedAt: ctx.now };
+  if (e.ip !== undefined) out.ip = e.ip;
+  if (e.country !== undefined) out.country = e.country.toUpperCase();
+  if (e.city !== undefined) out.city = e.city;
+  if (e.timezone !== undefined) out.timezone = e.timezone;
+  if (e.asn !== undefined) out.asn = e.asn;
+  if (e.asnOrg !== undefined) out.asnOrg = e.asnOrg;
+  out.asnType = asnType?.success ? asnType.data : 'unknown';
+  if (e.latencyMs !== undefined) out.latencyMs = e.latencyMs;
+  if (e.error !== undefined) out.error = e.error;
+  return out;
+}
+
+/** Bộ ánh xạ mặc định — đã xác minh với Fury 0.3.22 (SPIKE-P2). */
 export const DEFAULT_ENDPOINT_MAP: FuryEndpointMap = {
   health: {
     source: 'native',
     method: 'GET',
-    path: () => '/api/status',
-    parse: (raw) => ({ version: parseWith('health', RawStatus, raw).version }),
+    path: () => '/v1/status',
+    parse: (raw) => ({ version: parseWith('health', envelope(RawStatus), raw).data.version }),
   },
   listProfiles: {
     source: 'native',
     method: 'GET',
-    path: () => '/api/profiles',
-    parse: (raw) => {
-      const list = parseWith('listProfiles', z.union([z.array(RawProfileSummary), z.object({ profiles: z.array(RawProfileSummary) })]), raw);
-      return (Array.isArray(list) ? list : list.profiles).map(toSummary);
-    },
+    path: () => '/v1/profiles',
+    parse: (raw) => parseWith('listProfiles', RawProfiles, raw).data.map(toSummary),
   },
   getProfile: {
-    source: 'native',
+    // Không có endpoint một profile: lấy từ danh sách
+    source: 'fallback',
     method: 'GET',
-    path: ({ profileId }) => `/api/profiles/${enc(profileId)}`,
-    parse: (raw) => toDetail(parseWith('getProfile', RawProfileDetail, raw)),
+    path: () => '/v1/profiles',
+    parse: (raw, ctx) => toDetail(findProfile('getProfile', raw, ctx)),
   },
   getStatus: {
-    source: 'native',
+    // `running` trong danh sách, do agent theo dõi tiến trình; không biết mở qua app hay API
+    source: 'fallback',
     method: 'GET',
-    path: ({ profileId }) => `/api/profiles/${enc(profileId)}/status`,
-    parse: (raw) => {
-      const s = parseWith('getStatus', RawProfileStatus, raw);
-      const out: FuryProfileStatus = { open: s.open };
-      if (s.via !== undefined) out.via = s.via;
-      if (s.since !== undefined) out.since = s.since;
-      return out;
-    },
+    path: () => '/v1/profiles',
+    parse: (raw, ctx) => ({ open: findProfile('getStatus', raw, ctx).running === true, via: 'unknown' }),
   },
   launch: {
     source: 'native',
     method: 'POST',
-    path: ({ profileId }) => `/api/profiles/${enc(profileId)}/launch`,
-    body: ({ cdp }) => ({ cdp }),
+    path: () => '/v1/profiles/start',
+    body: ({ profileId, cdp }) => ({ id: profileId, cdp }),
     parse: (raw) => {
-      const l = parseWith('launch', RawLaunch, raw);
-      return { cdpEndpoint: l.cdpEndpoint, sessionRef: l.sessionRef ?? '' };
+      const l = parseWith('launch', envelope(RawLaunch), raw).data;
+      // Team server có thể cấm CDP theo vai trò: trình duyệt vẫn mở nhưng không có ws_endpoint
+      if (!l.ws_endpoint) throw new PvError('FURY_CAPABILITY_MISSING', 'Fury mở profile nhưng không cấp CDP (team server có thể cấm theo vai trò)', { capability: 'launch', reason: 'cdp_not_granted' });
+      return { cdpEndpoint: l.ws_endpoint, sessionRef: l.pid !== undefined ? String(l.pid) : '' };
     },
   },
   stop: {
     source: 'native',
     method: 'POST',
-    path: ({ profileId }) => `/api/profiles/${enc(profileId)}/stop`,
+    path: () => '/v1/profiles/stop',
+    body: ({ profileId }) => ({ id: profileId }),
     parse: () => undefined,
   },
-  checkExit: {
-    // TODO(SPIKE-P5): Fury có kiểm exit không mở trình duyệt không; định dạng asnType.
+  // TODO(SPIKE-P5): API công khai không có kiểm exit proxy (app dùng IPC riêng). Chờ P5 chọn nguồn khác.
+  checkExit: { source: 'missing' },
+  personas: {
     source: 'native',
-    method: 'POST',
-    path: ({ profileId }) => `/api/profiles/${enc(profileId)}/check-exit`,
-    parse: (raw, ctx) => {
-      const e = parseWith('checkExit', RawExit, raw);
-      const asnType = e.asnType !== undefined ? AsnTypeSchema.safeParse(e.asnType.toLowerCase()) : undefined;
-      const out: ExitInfo = { ok: e.error === undefined && e.ip !== undefined, checkedAt: ctx.now };
-      if (e.ip !== undefined) out.ip = e.ip;
-      if (e.country !== undefined) out.country = e.country.toUpperCase();
-      if (e.city !== undefined) out.city = e.city;
-      if (e.timezone !== undefined) out.timezone = e.timezone;
-      if (e.asn !== undefined) out.asn = e.asn;
-      if (e.asnOrg !== undefined) out.asnOrg = e.asnOrg;
-      out.asnType = asnType?.success ? asnType.data : 'unknown';
-      if (e.latencyMs !== undefined) out.latencyMs = e.latencyMs;
-      if (e.error !== undefined) out.error = e.error;
-      return out;
-    },
+    method: 'GET',
+    path: () => '/v1/personas',
+    parse: (raw) =>
+      parseWith('personas', envelope(z.array(RawPersona)), raw).data.map((p) => {
+        const out: FuryPersonaInfo = { id: p.id };
+        if (p.os) out.os = p.os;
+        if (p.gpu) out.gpu = p.gpu;
+        const screen = parseScreen(p.screen);
+        if (screen) out.screen = screen;
+        return out;
+      }),
   },
   meta: {
-    seed: 'missing', // TODO(SPIKE-P2)
-    asnType: 'fallback', // TODO(SPIKE-P5): nếu Fury trả asnType → native
+    seed: 'native',
+    asnType: 'missing',
+    normalizeJson: quoteBigSeeds,
   },
 };

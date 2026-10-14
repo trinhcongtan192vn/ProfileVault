@@ -55,6 +55,8 @@ export class ProxyCheckService {
     this.d.policy.onChanged?.(binding.id);
 
     if (!exit.ok) {
+      // Fury không có nguồn kiểm exit (API công khai 0.3.22 — TODO(SPIKE-P5)): không có bằng chứng, không phải cờ đỏ
+      if (check.error === 'FURY_CAPABILITY_MISSING') return check;
       this.d.policy.recordEvent(binding.id, 'proxy.check_failed', { error: check.error, proxyCheckId: check.id });
       return check;
     }

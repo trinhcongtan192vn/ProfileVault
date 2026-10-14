@@ -1,9 +1,10 @@
 /**
  * FakeFury — HTTP server giả lập automation API Fury cho test (SPEC-09 §3.1).
- * Cài ĐÚNG bộ ánh xạ giả định ở src/adapter/endpoint-map.ts. TODO(SPIKE-P2): cập nhật cùng endpoint-map sau spike.
+ * Theo API thật của Fury 0.3.22 đã xác minh ở SPIKE-P2 (xem src/adapter/endpoint-map.ts).
  */
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http';
 import type { AddressInfo } from 'node:net';
+import { DEFAULT_ENDPOINT_MAP, parseExitInfo, type FuryEndpointMap } from '../adapter/endpoint-map.js';
 
 export interface FakeProfile {
   id: string;
@@ -40,7 +41,7 @@ export interface FakeExit {
   error?: string;
 }
 
-export type FakeCapability = 'health' | 'listProfiles' | 'getProfile' | 'getStatus' | 'launch' | 'stop' | 'checkExit';
+export type FakeCapability = 'health' | 'listProfiles' | 'personas' | 'launch' | 'stop' | 'checkExit';
 
 export interface RecordedRequest {
   method: string;
@@ -155,7 +156,7 @@ export class FakeFury {
     return this.launchCounter.get(id) ?? 0;
   }
 
-  // ---- xử lý HTTP (bộ ánh xạ giả định — TODO(SPIKE-P2)) ----
+  // ---- xử lý HTTP: API thật của Fury 0.3.22 (SPIKE-P2) + một route chỉ dành cho test ----
   private async handle(req: IncomingMessage, res: ServerResponse): Promise<void> {
     const body = await readBody(req);
     const url = new URL(req.url ?? '/', 'http://127.0.0.1');
@@ -164,78 +165,122 @@ export class FakeFury {
     if (this.latencyMs > 0) await new Promise((r) => setTimeout(r, this.latencyMs));
 
     const forced = this.failQueue.shift();
-    if (forced !== undefined) return send(res, forced, { error: 'injected_failure' });
+    if (forced !== undefined) return send(res, forced, { error: 'injected_failure', message: 'injected' });
 
     if (this.authRequired) {
       const auth = req.headers.authorization;
-      if (!auth || auth !== `Bearer ${this.token ?? ''}`) return send(res, 401, { error: 'unauthorized' });
+      if (!auth || auth !== `Bearer ${this.token ?? ''}`) return send(res, 401, { error: 'unauthenticated', message: 'Send the token from the api-token file as a bearer token.' });
     }
 
-    const route = (cap: FakeCapability, fn: (id: string) => Promise<void> | void, id = ''): Promise<void> | void => {
-      if (this.disabled.has(cap)) return send(res, 404, { error: 'not_found' });
-      return fn(id);
+    const ok = (data: unknown) => send(res, 200, { ok: true, data });
+    const failed = (message: string) => send(res, 400, { error: 'failed', message });
+    const route = (cap: FakeCapability, fn: () => Promise<void> | void): Promise<void> | void => {
+      if (this.disabled.has(cap)) return send(res, 404, { error: 'not_found', message: 'No such endpoint.' });
+      return fn();
     };
+    const idValue = (body as { id?: unknown } | undefined)?.id;
+    const id = typeof idValue === 'string' ? idValue : '';
 
-    if (method === 'GET' && url.pathname === '/api/status') {
-      return route('health', () => send(res, 200, { ok: true, version: this.version }));
+    if (method === 'GET' && url.pathname === '/v1/status') {
+      const running = [...this.open].filter(([, st]) => st.open).map(([k]) => k);
+      return route('health', () => ok({ version: this.version, running, core_problem: null }));
     }
-    if (method === 'GET' && url.pathname === '/api/profiles') {
-      return route('listProfiles', () =>
-        send(
-          res,
-          200,
-          [...this.profiles.values()].map((p) => ({ id: p.id, name: p.name, tags: p.tags ?? [], personaId: p.personaId, os: p.os })),
-        ),
-      );
+    if (method === 'GET' && url.pathname === '/v1/profiles') {
+      return route('listProfiles', () => sendRaw(res, 200, `{"ok":true,"data":[${[...this.profiles.values()].map((p) => this.profileJson(p)).join(',')}]}`));
     }
-    const m = /^\/api\/profiles\/([^/]+)(?:\/(status|launch|stop|check-exit))?$/.exec(url.pathname);
-    if (m) {
-      const id = decodeURIComponent(m[1] ?? '');
-      const action = m[2];
-      const profile = this.profiles.get(id);
-      if (!action && method === 'GET') {
-        return route('getProfile', () => {
-          if (!profile) return send(res, 404, { error: 'profile_not_found' });
-          return send(res, 200, { ...profile, webrtc: profile.webrtc, proxy: profile.proxy });
-        });
-      }
-      if (action === 'status' && method === 'GET') {
-        return route('getStatus', () => {
-          if (!profile) return send(res, 404, { error: 'profile_not_found' });
-          const st = this.open.get(id) ?? { open: false, via: 'unknown' as const, since: '' };
-          return send(res, 200, { open: st.open, via: st.via, since: st.open ? st.since : undefined });
-        });
-      }
-      if (action === 'launch' && method === 'POST') {
-        return route('launch', async () => {
-          if (!profile) return send(res, 404, { error: 'profile_not_found' });
-          if (this.open.get(id)?.open) return send(res, 409, { error: 'profile_open' });
-          this.launchCounter.set(id, (this.launchCounter.get(id) ?? 0) + 1);
-          const result = this.launchHandler
-            ? await this.launchHandler(id)
-            : { cdpEndpoint: `ws://127.0.0.1:0/fake/${encodeURIComponent(id)}`, sessionRef: `fake-${id}-${Date.now()}` };
-          this.open.set(id, { open: true, via: 'api', since: new Date().toISOString() });
-          return send(res, 200, result);
-        });
-      }
-      if (action === 'stop' && method === 'POST') {
-        return route('stop', async () => {
-          if (!profile) return send(res, 404, { error: 'profile_not_found' });
-          if (this.open.get(id)?.open) await this.stopHandler?.(id);
-          this.open.set(id, { open: false, via: 'unknown', since: '' });
-          return send(res, 204, undefined);
-        });
-      }
-      if (action === 'check-exit' && method === 'POST') {
-        return route('checkExit', () => {
-          if (!profile) return send(res, 404, { error: 'profile_not_found' });
-          const exit = this.exits.get(id) ?? { error: 'no_exit_scenario' };
-          return send(res, 200, exit);
-        });
-      }
+    if (method === 'GET' && url.pathname === '/v1/personas') {
+      return route('personas', () => {
+        const seen = new Map<string, unknown>();
+        for (const p of this.profiles.values()) {
+          if (!p.personaId || seen.has(p.personaId)) continue;
+          const os = p.persona?.platform ?? p.os;
+          seen.set(p.personaId, {
+            id: p.personaId,
+            os: os ?? null,
+            gpu: p.persona?.gpuRenderer ?? null,
+            screen: p.persona?.screen ? `${p.persona.screen.width}×${p.persona.screen.height}` : null,
+            own: false,
+            source: 'derived',
+            weight: 0.05,
+          });
+        }
+        return ok([...seen.values()]);
+      });
     }
-    return send(res, 404, { error: 'not_found' });
+    if (method === 'POST' && url.pathname === '/v1/profiles/start') {
+      return route('launch', async () => {
+        if (!this.profiles.has(id)) return failed(`no profile ${id}`);
+        if (this.open.get(id)?.open) return failed(`profile ${id} is already running`);
+        this.launchCounter.set(id, (this.launchCounter.get(id) ?? 0) + 1);
+        const result = this.launchHandler
+          ? await this.launchHandler(id)
+          : { cdpEndpoint: `ws://127.0.0.1:0/devtools/browser/fake-${encodeURIComponent(id)}`, sessionRef: String(40000 + this.launchCount(id)) };
+        this.open.set(id, { open: true, via: 'api', since: new Date().toISOString() });
+        const cdp = (body as { cdp?: unknown } | undefined)?.cdp === true;
+        const pid = Number(result.sessionRef) || 40000;
+        return ok(cdp ? { pid, relay_port: 51834, debug_port: 51835, ws_endpoint: result.cdpEndpoint, ws: { puppeteer: result.cdpEndpoint, selenium: result.cdpEndpoint } } : { pid, relay_port: 51834 });
+      });
+    }
+    if (method === 'POST' && url.pathname === '/v1/profiles/stop') {
+      return route('stop', async () => {
+        if (!this.profiles.has(id)) return failed(`no profile ${id}`);
+        if (this.open.get(id)?.open) await this.stopHandler?.(id);
+        this.open.set(id, { open: false, via: 'unknown', since: '' });
+        return ok({});
+      });
+    }
+    // Chỉ cho test: Fury thật KHÔNG có route này (TODO(SPIKE-P5)); dùng với TEST_ENDPOINT_MAP
+    if (method === 'POST' && url.pathname === TEST_CHECK_EXIT_PATH) {
+      return route('checkExit', () => {
+        if (!this.profiles.has(id)) return failed(`no profile ${id}`);
+        return send(res, 200, this.exits.get(id) ?? { error: 'no_exit_scenario' });
+      });
+    }
+    return send(res, 404, { error: 'not_found', message: 'No such endpoint.' });
   }
+
+  /** Hàng profile dạng Fury 0.3.22; `fp_seed` ghi dạng số nguyên thô (u64) như Fury thật. */
+  private profileJson(p: FakeProfile): string {
+    const row = {
+      id: p.id,
+      name: p.name,
+      tags: p.tags ?? [],
+      persona_id: p.personaId ?? null,
+      fp_seed: '__SEED__',
+      timezone: p.timezone ?? null,
+      languages: p.languages ?? null,
+      // Fury trả cả đối tượng proxy; ProfileVault phải bỏ thông tin đăng nhập
+      proxy: p.proxy ?? null,
+      proxy_id: p.proxy?.id ?? null,
+      allow_no_proxy: p.proxy === undefined,
+      overrides: p.geolocation?.mode === 'manual' && p.geolocation.lat !== undefined && p.geolocation.lon !== undefined ? { geolocation: { latitude: p.geolocation.lat, longitude: p.geolocation.lon } } : {},
+      status: '',
+      running: this.open.get(p.id)?.open ?? false,
+    };
+    const seed = p.seed === undefined ? 'null' : /^-?\d+$/.test(p.seed) ? p.seed : JSON.stringify(p.seed);
+    return JSON.stringify(row).replace('"__SEED__"', seed);
+  }
+}
+
+/** Route kiểm exit chỉ có trong FakeFury (Fury thật chưa có — TODO(SPIKE-P5)). */
+export const TEST_CHECK_EXIT_PATH = '/v1/test/check-exit';
+
+/** Bộ ánh xạ thật + checkExit trỏ route test, cho test Health/Gateway cần kịch bản exit. */
+export const TEST_ENDPOINT_MAP: FuryEndpointMap = {
+  ...DEFAULT_ENDPOINT_MAP,
+  checkExit: {
+    source: 'native',
+    method: 'POST',
+    path: () => TEST_CHECK_EXIT_PATH,
+    body: ({ profileId }) => ({ id: profileId }),
+    parse: parseExitInfo,
+  },
+  meta: { ...DEFAULT_ENDPOINT_MAP.meta, asnType: 'fallback' },
+};
+
+function sendRaw(res: ServerResponse, status: number, text: string): void {
+  res.writeHead(status, { 'content-type': 'application/json', 'content-length': Buffer.byteLength(text) });
+  res.end(text);
 }
 
 function send(res: ServerResponse, status: number, body: unknown): void {

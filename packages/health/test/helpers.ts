@@ -2,8 +2,8 @@ import { FakeClock, type BusEventMap, type BusEventName, type Config, DEFAULT_CO
 import { EventBus, MemorySecretStore, silentLogger } from '@sctech/profilevault-core';
 import path from 'node:path';
 import { AuditRepo, openTestDatabase, SettingsRepo, type TestDatabase } from '@sctech/profilevault-db';
-import { FakeTimers, HttpFuryClient } from '@sctech/profilevault-fury-client';
-import { FakeFury } from '@sctech/profilevault-fury-client/testing';
+import { DEFAULT_ENDPOINT_MAP, FakeTimers, HttpFuryClient } from '@sctech/profilevault-fury-client';
+import { FakeFury, TEST_ENDPOINT_MAP } from '@sctech/profilevault-fury-client/testing';
 import { createHealth, thresholdsSeeder, type HealthBundle } from '../src/index.js';
 
 export interface Harness {
@@ -22,7 +22,7 @@ export interface Harness {
   cleanup(): Promise<void>;
 }
 
-export async function makeHarness(opts: { fakeVersion?: string; timezone?: string } = {}): Promise<Harness> {
+export async function makeHarness(opts: { fakeVersion?: string; timezone?: string; realEndpoints?: boolean } = {}): Promise<Harness> {
   const t = openTestDatabase();
   const clock = new FakeClock('2026-10-14T03:00:00.000Z'); // 10:00 Asia/Bangkok
   const bus = new EventBus({ onListenerError: () => undefined });
@@ -33,7 +33,7 @@ export async function makeHarness(opts: { fakeVersion?: string; timezone?: strin
   const fake = new FakeFury({ version: opts.fakeVersion ?? '0.2.23' });
   await fake.start();
   const timers = new FakeTimers();
-  const fury = new HttpFuryClient({ baseUrl: fake.baseUrl, supportedVersions: '>=0.2.21 <0.4.0', timers, clock, maxRetries: 0 });
+  const fury = new HttpFuryClient({ baseUrl: fake.baseUrl, supportedVersions: '>=0.2.21 <0.4.0', timers, clock, maxRetries: 0, endpoints: opts.realEndpoints ? DEFAULT_ENDPOINT_MAP : TEST_ENDPOINT_MAP });
   const settings = new SettingsRepo(t.database.db, clock);
   const audit = new AuditRepo(t.database.db, clock);
   const config: Config = { ...DEFAULT_CONFIG, ui: { ...DEFAULT_CONFIG.ui, timezone: opts.timezone ?? 'Asia/Bangkok' } };

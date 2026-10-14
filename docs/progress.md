@@ -8,7 +8,8 @@ File này để một phiên làm việc mới tiếp tục được từ chỗ 
 (255 Vitest + 7 Playwright fixture). 006 còn task T015 là nghiệm thu desktop Windows bằng tay (tray, toast, autostart).
 Feature 008 cũ (onboarding hướng dẫn) đã bỏ. Thay bằng **tự cài Fury** (SPEC-00 §11.1, constitution 2.0.0): service tự tải + cài Fury 0.3.22
 (ghim SHA-256) khi máy chưa có, dashboard có banner tiến độ/thử lại. Máy dev này đã cài Fury 0.3.22 + core 155.0.8059.39 (2026-10-14).
-Còn `TODO(SPIKE-P2)`: bật automation API của Fury (`FURY_API_PORT`) và lưu token.
+**P2 xong (đạt một phần)**: adapter theo API thật Fury 0.3.22; ProfileVault tự đọc token, bật `FURY_API_PORT`; dashboard thấy Fury online.
+API công khai không có kiểm exit proxy → `checkExit` missing, chờ P5. Đang chạy P1 (người dùng theo dõi 7 ngày, profile test không proxy).
 Chưa chạy Fury/YouTube thật, đã chạy P6 (đạt); chưa chạy P1–P5, P7, chưa đủ điều kiện phát hành M0/live.
 Không bắt đầu M1 khi P4 chưa đạt (SPIKE-ke-hoach "Thứ tự").
 
@@ -43,7 +44,7 @@ Ký hiệu: ⏳ chưa làm · 🔄 đang làm · ✅ xong · ⚠️ xong có ghi
 
 | # | Câu hỏi | Liên quan | Trạng thái |
 |---|---|---|---|
-| Q1 | Định dạng thật của Automation API Fury (endpoint, JSON) | SPEC-01 §4, SPIKE-P2 | Chờ spike P2; adapter HTTP có `TODO(SPIKE-P2)` |
+| Q1 | Định dạng thật của Automation API Fury (endpoint, JSON) | SPEC-01 §4, SPIKE-P2 | **Đã trả lời** (P2, 2026-10-14): SPEC-01 §4 |
 | Q2 | Định dạng file probe của Fury | SPEC-02 §6.3, SPIKE-P3 | Chờ spike P3; `parseFuryCapture` có `TODO(SPIKE-P3)` |
 | Q3 | Fury có kiểm exit proxy không mở trình duyệt và phân loại ASN không | SPEC-01 §4, SPIKE-P5 | Chờ spike P5; mặc định `asnType = unknown` + `asn_attestations` |
 | Q4 | Đọc GPU/màn hình trên Windows không cần admin | SPIKE-P6 | **Đã trả lời 2026-10-14:** đọc được, ~170 ms, không cần admin; VRAM không đáng tin (trần 4 GB) — xem SPIKE-bao-cao |
@@ -61,7 +62,7 @@ Những điểm `docs/` không trả lời; đã chọn phương án nhất quá
 | G4 | Thư mục dữ liệu ghi đè được bằng `PV_APPDATA_DIR`, `PV_LOCALAPPDATA_DIR` (cho test và chạy dev) | 001 | Cần để test không đụng `%APPDATA%` thật |
 | G5 | Kho bí mật: `DpapiSecretStore` (sản phẩm, Windows) + `MemorySecretStore` (chỉ test); định dạng `secrets.bin` = JSON `{ version: 1, entries: { key: base64(DPAPI blob) } }` | 001 | SPEC-00 §5 chỉ nói "mã hóa DPAPI" |
 | G6 | Log tiến trình dạng NDJSON `service-YYYY-MM-DD.log`, xoay theo ngày, xóa > 7 ngày, che mọi giá trị đang có trong kho bí mật | 001 | SPEC-00 §5 chỉ nói "xoay vòng 7 ngày" |
-| G8 | Bộ ánh xạ endpoint Fury giả định (GET `/api/status`, `/api/profiles`, `/api/profiles/:id`, `/api/profiles/:id/status`; POST `/api/profiles/:id/launch`, `/stop`, `/check-exit`) nằm ở `packages/fury-client/src/adapter/endpoint-map.ts` với `TODO(SPIKE-P2)`; FakeFury cài đúng bộ này | 002 | SPIKE-P2 chưa chạy; SPEC-01 §1 đòi chỉ `fury-client` đổi sau spike |
+| G8 | Bộ ánh xạ endpoint Fury giả định (GET `/api/status`, `/api/profiles`, `/api/profiles/:id`, `/api/profiles/:id/status`; POST `/api/profiles/:id/launch`, `/stop`, `/check-exit`) nằm ở `packages/fury-client/src/adapter/endpoint-map.ts` với `TODO(SPIKE-P2)`; FakeFury cài đúng bộ này | 002 | **Thay bằng API thật sau SPIKE-P2** (SPEC-01 §4) |
 | G9 | Kiểu dữ liệu Fury (SPEC-01 §3) đặt ở `packages/contract/src/fury.ts` dạng Zod | 002 | SPEC-00 §2: mọi schema vào/ra ở contract |
 | G10 | Thêm dependency `semver` để kiểm `config.fury.supportedVersions` | 002 | SPEC-00 §3 không liệt kê; ghi `docs/decisions.md` |
 | G11 | Poller báo profile mở/đóng qua callback `onProfileStatusChanged` (DI) thay vì sự kiện bus; Health 003 nối để ghi `health_events` | 002 | SPEC-00 §10 không có sự kiện bus cho việc này |
@@ -100,21 +101,7 @@ Cập nhật sau mỗi feature (lệnh: `grep -rn --exclude-dir=dist "TODO(SPIKE
 
 | Spike | File | Nội dung |
 |---|---|---|
-| SPIKE-P2 | `packages/fury-client/src/adapter/endpoint-map.ts:4` | * TODO(SPIKE-P2): toàn bộ đường dẫn, phương thức và tên trường dưới đây là GIẢ ĐỊNH (docs/progress.md G8). |
-| SPIKE-P2 | `packages/fury-client/src/adapter/endpoint-map.ts:47` | /** `getProfile` có trả `seed` không. TODO(SPIKE-P2) */ |
-| SPIKE-P5 | `packages/fury-client/src/adapter/endpoint-map.ts:49` | /** `checkExit` có trả `asnType` không. TODO(SPIKE-P5) */ |
-| SPIKE-P2 | `packages/fury-client/src/adapter/endpoint-map.ts:76` | // ---- Schema thô (lỏng, passthrough) — TODO(SPIKE-P2) tên trường giả định ---- |
-| SPIKE-P2 | `packages/fury-client/src/adapter/endpoint-map.ts:186` | /** Bộ ánh xạ mặc định — TODO(SPIKE-P2): xác minh từng route với Fury thật. */ |
-| SPIKE-P5 | `packages/fury-client/src/adapter/endpoint-map.ts:238` | // TODO(SPIKE-P5): Fury có kiểm exit không mở trình duyệt không; định dạng asnType. |
-| SPIKE-P2 | `packages/fury-client/src/adapter/endpoint-map.ts:259` | seed: 'missing', // TODO(SPIKE-P2) |
-| SPIKE-P5 | `packages/fury-client/src/adapter/endpoint-map.ts:260` | asnType: 'fallback', // TODO(SPIKE-P5): nếu Fury trả asnType → native |
-| SPIKE-P2 | `packages/fury-client/src/adapter/profile-config-file.ts:3` | * CHỈ ĐỌC. TODO(SPIKE-P2): vị trí file và định dạng là giả định; tiêm `locate`/`parse` sau spike. |
-| SPIKE-P2 | `packages/fury-client/src/adapter/profile-config-file.ts:15` | /** Đường dẫn file cấu hình của profile. Mặc định `<dataDir>/profiles/<id>/profile.json` — TODO(SPIKE-P2). */ |
-| SPIKE-P2 | `packages/fury-client/src/adapter/profile-config-file.ts:17` | /** Chuyển JSON thô → trường của FuryProfileDetail. Mặc định chỉ lấy các trường trùng tên — TODO(SPIKE-P2). */ |
-| SPIKE-P2 | `packages/fury-client/src/testing/fake-fury.ts:3` | * Cài ĐÚNG bộ ánh xạ giả định ở src/adapter/endpoint-map.ts. TODO(SPIKE-P2): cập nhật cùng endpoint-map sau sp |
-| SPIKE-P2 | `packages/fury-client/src/testing/fake-fury.ts:158` | // ---- xử lý HTTP (bộ ánh xạ giả định — TODO(SPIKE-P2)) ---- |
-| SPIKE-P2 | `packages/fury-client/test/http-client.test.ts:87` | it('getProfile hợp nhất fallback file cấu hình (TODO(SPIKE-P2)) cho trường còn thiếu', async () => { |
-| SPIKE-P2 | `packages/fury-client/test/version-adapter.test.ts:20` | describe('bộ ánh xạ endpoint mặc định (TODO(SPIKE-P2))', () => { |
+| SPIKE-P5 | `packages/fury-client/src/adapter/endpoint-map.ts` | `checkExit: { source: 'missing' }` — API công khai không có kiểm exit; `meta.asnType` |
 | SPIKE-P3 | `packages/health/src/probe/converters.ts:3` | * TODO(SPIKE-P3): định dạng xuất thật của trang probe Fury chưa biết; `furyCaptureV1Converter` là giả định. |
 | SPIKE-P3 | `packages/health/src/probe/converters.ts:31` | * TODO(SPIKE-P3): giả định trang probe Fury xuất `{ meta: { furyVersion, capturedAt }, fingerprint: { ... } }` |
 | SPIKE-P3 | `packages/health/src/probe/normalize.ts:25` | * `converters` tiêm được (TODO(SPIKE-P3)). |

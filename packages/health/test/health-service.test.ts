@@ -92,6 +92,19 @@ describe('sự kiện (spec 003 US2)', () => {
     expect(h.bundle.health.listEvents(undefined, { types })).toHaveLength(2);
   });
 
+  it('Fury không có kiểm exit (API 0.3.22) → ghi lần kiểm không có bằng chứng, KHÔNG phát proxy.check_failed', async () => {
+    const real = await makeHarness({ realEndpoints: true });
+    try {
+      const b = await addBinding(real, 1, { level: 1 });
+      const c = await real.bundle.health.runProxyCheckNow(b.id);
+      expect(c).toMatchObject({ ok: false, error: 'FURY_CAPABILITY_MISSING' });
+      expect(real.bundle.health.listEvents(b.id, { types: ['proxy.check_failed'] })).toEqual([]);
+      expect(real.bundle.health.getBinding(b.id)!.level).toBe(1);
+    } finally {
+      await real.cleanup();
+    }
+  });
+
   it('kiểm proxy: ghi đủ trường; lỗi → proxy.check_failed warn; binding lạ → ACCOUNT_NOT_BOUND', async () => {
     const b = await addBinding(h, 1, { level: 1 });
     h.fake.setExit('p1', { ip: '5.6.7.8', country: 'DE', city: 'Frankfurt', timezone: 'Europe/Berlin', asn: 3320, asnOrg: 'DTAG', asnType: 'isp', latencyMs: 120 });

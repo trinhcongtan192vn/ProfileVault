@@ -90,7 +90,7 @@ export const LAYER_A: ConsistencyRule[] = [
     evaluate(ctx, params) {
       const id = ctx.binding.id;
       const geo = ctx.furyProfile?.geolocation;
-      if (!geo) return unknown(id, ctx.furyProfileError ? `Không đọc được cấu hình Fury (${ctx.furyProfileError}).` : 'Cấu hình Fury không cho biết geolocation (chờ SPIKE-P2).');
+      if (!geo) return unknown(id, ctx.furyProfileError ? `Không đọc được cấu hình Fury (${ctx.furyProfileError}).` : 'Cấu hình Fury không cho biết geolocation.');
       if (geo.mode === 'off' || geo.mode === 'auto') return pass(id, geo.mode, 'off|auto');
       if (!ctx.exit?.country) return unknown(id, NO_EXIT, geo);
       if (geo.lat === undefined || geo.lon === undefined) return fail(id, geo, 'tọa độ hợp lệ', 'Geolocation ở chế độ thủ công nhưng không có tọa độ. Tắt geolocation hoặc đặt theo vị trí exit.');

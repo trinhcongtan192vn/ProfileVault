@@ -51,7 +51,7 @@ export function registerCoreRoutes(app: FastifyInstance, deps: GatewayDeps): voi
     } catch {
       /* missing */
     }
-    return { health: h, capabilities, currentVersion: health.currentFuryVersion() ?? null, apiBaseUrl: deps.config.fury.apiBaseUrl, supportedVersions: deps.config.fury.supportedVersions, hasToken: (await deps.secrets.get('fury.token')) !== undefined };
+    return { health: h, capabilities, currentVersion: health.currentFuryVersion() ?? null, apiBaseUrl: deps.config.fury.apiBaseUrl, supportedVersions: deps.config.fury.supportedVersions, hasToken: (await deps.secrets.get('fury.token')) !== undefined || (deps.furyTokenFile !== undefined && existsSync(deps.furyTokenFile)) };
   });
   app.put('/internal/fury/token', async (req, reply) => {
     const { token } = parse(FuryTokenInputSchema, req.body);

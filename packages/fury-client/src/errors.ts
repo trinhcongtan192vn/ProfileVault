@@ -11,7 +11,7 @@ export function furyOffline(reason: OfflineReason, message: string, extra: Recor
 const PROFILE_SCOPED: ReadonlySet<FuryCapability> = new Set(['getProfile', 'getStatus', 'launch', 'stop']);
 
 /** Ánh xạ mã HTTP → PvError (SPEC-01 §8; research R1). */
-export function mapHttpStatus(cap: FuryCapability, status: number, profileId?: string): PvError {
+export function mapHttpStatus(cap: FuryCapability, status: number, profileId?: string, furyMessage?: string): PvError {
   if (status === 401 || status === 403) {
     return furyOffline('auth', 'Fury từ chối token (401/403). Nhập lại token ở Cài đặt → Kết nối Fury.', { status });
   }
@@ -24,6 +24,13 @@ export function mapHttpStatus(cap: FuryCapability, status: number, profileId?: s
   if (status === 409 && cap === 'launch') {
     return new PvError('PROFILE_BUSY', `Profile "${profileId ?? ''}" đang mở`, { profileId, status });
   }
+  // Fury trả 400 `{ error: 'failed', message }` khi từ chối thao tác (vd profile đang mở, không có core)
+  if (status === 400 && PROFILE_SCOPED.has(cap)) {
+    if (cap === 'launch' && /open|running|lock/i.test(furyMessage ?? '')) {
+      return new PvError('PROFILE_BUSY', `Profile "${profileId ?? ''}" đang mở: ${furyMessage ?? ''}`, { profileId, status, furyMessage });
+    }
+    return new PvError('INPUT_INVALID', `Fury từ chối ${cap}: ${furyMessage ?? 'không rõ lý do'}`, { profileId, status, furyMessage });
+  }
   if (status >= 500) {
     return furyOffline('server', `Fury trả lỗi ${status}`, { status, capability: cap });
   }
@@ -32,6 +39,10 @@ export function mapHttpStatus(cap: FuryCapability, status: number, profileId?: s
 
 export function badResponse(cap: FuryCapability, issues: { path: string; message: string }[]): PvError {
   return furyOffline('bad_response', `Phản hồi Fury cho ${cap} thiếu trường bắt buộc`, { capability: cap, issues });
+}
+
+export function profileNotFound(profileId: string): PvError {
+  return new PvError('INPUT_INVALID', `Profile Fury "${profileId}" không tồn tại`, { profileId });
 }
 
 export function isRetryableFuryError(err: unknown): boolean {

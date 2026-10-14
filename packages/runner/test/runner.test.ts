@@ -42,7 +42,7 @@ describe('Runner queue và ownership', () => {
     h = await runnerHarness(); const b = await h.binding(1, 0);
     const low = await h.runner.enqueue({ bindingId: b.id, flowId: 'test/check', idempotencyKey: 'low' });
     await h.runner.tick(); expect(h.runner.getRun(low.id)).toMatchObject({ status: 'cancelled', errorCode: 'LEVEL_TOO_LOW' });
-    expect(h.fake.requests().some((r) => r.path.endsWith('/launch'))).toBe(false);
+    expect(h.fake.requests().some((r) => r.path === '/v1/profiles/start')).toBe(false);
     h.bundle.repos.bindings.setLevel(b.id, 1, h.clock.nowIso()); h.fake.setOpen('p1', true, 'app');
     const waiting = await h.runner.enqueue({ bindingId: b.id, flowId: 'test/check', idempotencyKey: 'busy' });
     await h.runner.tick(); expect(h.runner.getRun(waiting.id)!.status).toBe('waiting_profile');
@@ -72,7 +72,7 @@ describe('Runner queue và ownership', () => {
     const run = await h.runner.enqueue({ bindingId: b.id, flowId: 'test/check', idempotencyKey: 'captcha' });
     await h.bundle.health.recordManualEvent(b.id, 'manual.captcha');
     await waitFor(() => h!.runner.getRun(run.id)?.status === 'cancelled');
-    expect(h.fake.requests().some((r) => r.path.endsWith('/launch'))).toBe(false);
+    expect(h.fake.requests().some((r) => r.path === '/v1/profiles/start')).toBe(false);
   });
 });
 
@@ -90,7 +90,7 @@ describe('Gate và recovery', () => {
     expect(h.runner.getRun(run.id)!.status).toBe('needs_user');
     await h.runner.resolveGate(run.id, { choice: 'continue' }, 'user');
     await waitFor(() => h!.runner.getRun(run.id)?.status === 'done');
-    expect(h.fake.requests().filter((r) => r.path.endsWith('/launch'))).toHaveLength(2);
+    expect(h.fake.requests().filter((r) => r.path === '/v1/profiles/start')).toHaveLength(2);
   });
   it.each([true, false])('retry chỉ khi bước idempotent=%s', async (idempotent) => {
     let attempts = 0;

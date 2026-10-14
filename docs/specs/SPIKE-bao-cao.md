@@ -6,7 +6,7 @@ Nguồn kế hoạch: `SPIKE-ke-hoach.md`; hướng dẫn: `../../spikes/README.
 | Spike | Bắt đầu/kết thúc | Môi trường/phiên bản | Bằng chứng đã loại bí mật | Kết quả | Adapter/spec cần sửa |
 |---|---|---|---|---|---|
 | P1 Giữ phiên | — | — | — | Chưa chạy | SPEC-09 |
-| P2 API | — | — | — | Chưa chạy | SPEC-01, endpoint-map, file fallback |
+| P2 API | 2026-10-14 | Fury 0.3.22 (core 155.0.8059.39), Windows 10 Pro 19045, 1 profile test không proxy | Đọc mã nguồn tag v0.3.22 (`agent/src/http.rs`, `ipc.rs`, `store.rs`, `shared-rs/src/overrides.rs`, `desktop/src-tauri/src/agent.rs`); gọi thật `GET /v1/status`, `/v1/profiles`, `/v1/personas` (chỉ đọc, không mở profile) | **Đạt một phần**: 6 endpoint `/v1`, phong bì `{ok,data}`, bật bằng `FURY_API_PORT`, token file `api-token`, không token → 401. Đủ cho health/list/status/launch/stop/getProfile/seed. **Không có** kiểm exit proxy và asnType (→ P5). Phát hiện: `fp_seed` i64 vượt độ chính xác số JS → đọc dạng chuỗi; geolocation ở `overrides`. `launch` CDP chưa gọi (thuộc P4) | `packages/fury-client/src/adapter/endpoint-map.ts`; SPEC-01 §4–5; SPEC-00 §11.1 |
 | P3 Probe | — | — | — | Chưa chạy | SPEC-02, probe converter |
 | P4 CDP/Studio | — | — | — | Chưa chạy | SPEC-03/04, locators |
 | P5 Exit/ASN | — | — | — | Chưa chạy | SPEC-01/02 |

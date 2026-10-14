@@ -1,10 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { makeGateway, type GwHarness } from './helpers.js';
+import { freePort, makeGateway, type GwHarness } from './helpers.js';
 
 let h: GwHarness;
 let bindingId: string;
 beforeEach(async () => {
-  h = await makeGateway();
+  h = await makeGateway({ port: await freePort() });
   h.fake.upsertProfile({ id: 'p1', name: 'Kênh 1', personaId: 'persona-1', os: 'windows' });
   const res = await h.api({ method: 'POST', url: '/internal/bindings', payload: { platform: 'youtube', accountId: 'UC1', displayName: 'Kênh 1', furyProfileId: 'p1', marketCountry: 'DE' } });
   bindingId = (res.json() as { id: string }).id;

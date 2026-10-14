@@ -66,25 +66,27 @@ type FuryCapabilities = Record<
 
 Trường tùy chọn (`?`) có thể thiếu tùy nguồn; nơi dùng phải xử lý `undefined` thành trạng thái `unknown` (SPEC-02).
 
-## 4. Ánh xạ nguồn **[SPIKE-P2, SPIKE-P5]**
+## 4. Ánh xạ nguồn (đã xác minh SPIKE-P2 với Fury 0.3.22; **[SPIKE-P5]** còn mở)
 
-| Năng lực | Nguồn dự kiến | Bắt buộc ở M0? |
+Automation API của Fury: bật khi `fury-agent serve` có biến môi trường `FURY_API_PORT` (quy ước 35000), chỉ nghe `127.0.0.1`, bearer token trong `<thư mục dữ liệu Fury>/api-token` (`%APPDATA%\Fury` hoặc `FURY_HOME`), từ chối request có `Origin`. Phản hồi `{ ok: true, data }`; lỗi `{ error, message }` (400 khi từ chối thao tác, 401 token, 403 Origin/Host, 404 route). Chỉ có 6 endpoint.
+
+| Năng lực | Nguồn | Loại |
 |---|---|---|
-| `health` / phiên bản | Endpoint trạng thái của automation API | Có |
-| `listProfiles` | Automation API | Có |
-| `getStatus` | Automation API | Có |
-| `launch` (CDP) | Automation API, tham số bật CDP | Có (session-check ở L1) |
-| `stop` | Automation API | Có |
-| `getProfile` (cấu hình persona, múi giờ, ngôn ngữ, geolocation) | Automation API; nếu không có: đọc file cấu hình profile trong `fury.dataDir` (chỉ đọc) | Có |
-| `seed` | Như trên | Không (luật D3 dùng `unknown` nếu thiếu) |
-| `checkExit` | Kiểm exit qua proxy do Fury thực hiện | Có |
-| `asnType` | Fury hoặc `.mmdb` cục bộ; nếu không có: `unknown` + xác nhận tay | Không |
+| `health` / phiên bản | `GET /v1/status` → `data.version` | native |
+| `listProfiles` | `GET /v1/profiles` → `id`, `name`, `tags`, `persona_id` (OS suy từ tiền tố, vd `win11-…`) | native |
+| `getStatus` | `running` của hàng trong `GET /v1/profiles`; không biết mở qua app hay API (`via: unknown`) | fallback |
+| `launch` (CDP) | `POST /v1/profiles/start` `{ id, cdp: true }` → `data.ws_endpoint`, `data.pid`; không có `ws_endpoint` (team server cấm CDP) → `FURY_CAPABILITY_MISSING` | native |
+| `stop` | `POST /v1/profiles/stop` `{ id }` | native |
+| `getProfile` | Hàng trong `GET /v1/profiles` + `GET /v1/personas` (`os`, `gpu`, `screen` "W×H"). `timezone`/`languages` `null` = theo quốc gia exit (để trống). Geolocation: `overrides.geolocation {latitude, longitude}` → manual, không có → auto. `overrides.screen/gpu/cores/memory_gb` thắng persona. Chỉ lấy `proxy_id`, bỏ đối tượng `proxy` | fallback |
+| `seed` | `fp_seed` (i64 — vượt `Number.MAX_SAFE_INTEGER`, đổi sang chuỗi trước khi parse JSON) | native |
+| `checkExit` | **Không có** trong API công khai (app dùng IPC riêng) — chờ P5 | missing |
+| `asnType` | Không có — chờ P5 (`.mmdb` cục bộ hoặc xác nhận tay) | missing |
 
-Bảng được cập nhật sau spike P2/P5; giao diện §3 giữ nguyên.
+Thiếu `checkExit`: lần kiểm proxy theo lịch ghi `ok = false, error = FURY_CAPABILITY_MISSING` và **không** phát `proxy.check_failed` (không có bằng chứng thì không phải cờ đỏ). Giao diện §3 giữ nguyên.
 
 ## 5. Kết nối và cấu hình
 
-- Địa chỉ: `config.fury.apiBaseUrl`; token bearer đọc từ `secrets.bin`.
+- Địa chỉ: `config.fury.apiBaseUrl` (thiếu `FURY_API_PORT` → 35000). Token: token người dùng lưu ở Cài đặt (`secrets.bin`) nếu có, không thì đọc file `api-token` của Fury mỗi lần gọi (không lưu, không log).
 - Trang "Kết nối Fury" trên dashboard (SPEC-07) cho nhập token, kiểm `health()`, hiển thị `capabilities()`.
 - Timeout: `health` 3 s; `listProfiles`/`getProfile`/`getStatus` 5 s; `checkExit` 30 s; `launch` 60 s; `stop` 15 s.
 - Thử lại: chỉ với lỗi mạng/5xx, tối đa 2 lần, backoff 1 s → 3 s. Không thử lại `launch` nếu không chắc profile chưa mở (gọi `getStatus` trước).

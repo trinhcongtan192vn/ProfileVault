@@ -15,7 +15,7 @@ import {
   type SecretStore,
 } from '@sctech/profilevault-core';
 import { AuditRepo, openDatabase, SettingsRepo, type Database } from '@sctech/profilevault-db';
-import { fromSecretStore, FuryInstaller, FuryStatusPoller, HttpFuryClient, type FuryClient, type Timers } from '@sctech/profilevault-fury-client';
+import { FURY_API_DEFAULT_PORT, furyTokenFile, furyTokenSource, FuryInstaller, FuryStatusPoller, HttpFuryClient, type FuryClient, type Timers } from '@sctech/profilevault-fury-client';
 import { createHealth, type HealthBundle, type HealthService } from '@sctech/profilevault-health';
 import { createGateway, type Gateway, type RunnerFacade } from '@sctech/profilevault-gateway';
 import { PackLoader, Runner } from '@sctech/profilevault-runner';
@@ -105,7 +105,9 @@ export async function bootstrap(opts: BootstrapOptions = {}): Promise<ServiceCon
   let ownedRunner: Runner | undefined;
   try {
     // 2. Cấu hình
-    const loaded = loadConfig(paths, env);
+    // Thiếu FURY_API_PORT (vd service khởi từ cửa sổ có môi trường cũ) → cổng quy ước của Fury
+    const loaded = loadConfig(paths, { ...env, FURY_API_PORT: env.FURY_API_PORT ?? String(FURY_API_DEFAULT_PORT) });
+    const tokenFile = furyTokenFile(env, loaded.config.fury.dataDir);
 
     // 3. Bí mật
     const secrets = opts.secretStore ?? defaultSecretStore(paths.secretsFile);
@@ -144,7 +146,7 @@ export async function bootstrap(opts: BootstrapOptions = {}): Promise<ServiceCon
       new HttpFuryClient({
         baseUrl: loaded.config.fury.apiBaseUrl,
         supportedVersions: loaded.config.fury.supportedVersions,
-        getToken: fromSecretStore(secrets),
+        getToken: furyTokenSource(secrets, tokenFile),
         clock,
         timers: opts.timers,
         logger: logger.child({ pkg: 'fury-client' }),
@@ -211,7 +213,7 @@ export async function bootstrap(opts: BootstrapOptions = {}): Promise<ServiceCon
     }
     const runner = opts.runner ?? ownedRunner!;
     // Tự cài Fury bản đã ghim khi máy chưa có (SPEC-00 §11.1).
-    // TODO(SPIKE-P2): bật automation API của Fury (FURY_API_PORT cho `fury-agent serve`) + lưu token sau khi P2 xác minh.
+    // Cài xong còn bật automation API (biến user FURY_API_PORT); token đọc từ file api-token của Fury (SPIKE-P2).
     const furyInstaller =
       opts.furyInstaller ??
       new FuryInstaller({
@@ -247,6 +249,7 @@ export async function bootstrap(opts: BootstrapOptions = {}): Promise<ServiceCon
       paths: { probesDir: paths.probesDir },
       runner,
       furyInstall: furyInstaller,
+      furyTokenFile: tokenFile,
       staticDir: opts.staticDir ?? defaultStaticDir(),
       serviceVersion: SERVICE_VERSION,
       startedAt: clock.nowIso(),

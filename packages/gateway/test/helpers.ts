@@ -1,12 +1,13 @@
+import { createServer } from 'node:net';
 import path from 'node:path';
 import { DEFAULT_CONFIG, FakeClock, type Config, type FlowInfo, type JobRecord, type RunRecord, type Schedule } from '@sctech/profilevault-contract';
 import { EventBus, MemorySecretStore, silentLogger } from '@sctech/profilevault-core';
 import { AuditRepo, openTestDatabase, SettingsRepo, type TestDatabase } from '@sctech/profilevault-db';
 import { FakeTimers, FuryStatusPoller, HttpFuryClient } from '@sctech/profilevault-fury-client';
-import { FakeFury } from '@sctech/profilevault-fury-client/testing';
+import { FakeFury, TEST_ENDPOINT_MAP } from '@sctech/profilevault-fury-client/testing';
 import { createHealth, type HealthBundle } from '@sctech/profilevault-health';
 import type { InjectOptions, LightMyRequestResponse } from 'fastify';
-import { createGateway, CSRF_HEADER, SESSION_COOKIE, type Gateway, type GatewayDeps, type RunnerFacade } from '../src/index.js';
+import { createGateway, CSRF_HEADER, SESSION_COOKIE, type Gateway, type RunnerFacade } from '../src/index.js';
 
 export interface GwHarness {
   gw: Gateway;
@@ -84,14 +85,23 @@ export class FakeRunner implements RunnerFacade {
   };
 }
 
-export async function makeGateway(opts: { setup?: GatewayDeps['setup']; runner?: RunnerFacade; staticDir?: string; port?: number; host?: string } = {}): Promise<GwHarness> {
+/** Cổng trống trên loopback (test listen thật mà không đụng ProfileVault đang chạy ở 50410). */
+export async function freePort(): Promise<number> {
+  const srv = createServer();
+  await new Promise<void>((resolve) => srv.listen(0, '127.0.0.1', resolve));
+  const port = (srv.address() as { port: number }).port;
+  await new Promise<void>((resolve) => srv.close(() => resolve()));
+  return port;
+}
+
+export async function makeGateway(opts: { runner?: RunnerFacade; staticDir?: string; port?: number; host?: string } = {}): Promise<GwHarness> {
   const t = openTestDatabase();
   const clock = new FakeClock('2026-10-14T03:00:00.000Z');
   const bus = new EventBus({ onListenerError: () => undefined });
   const fake = new FakeFury({ version: '0.2.23' });
   await fake.start();
   const timers = new FakeTimers();
-  const fury = new HttpFuryClient({ baseUrl: fake.baseUrl, supportedVersions: '>=0.2.21 <0.4.0', timers, clock, maxRetries: 0 });
+  const fury = new HttpFuryClient({ baseUrl: fake.baseUrl, supportedVersions: '>=0.2.21 <0.4.0', timers, clock, maxRetries: 0, endpoints: TEST_ENDPOINT_MAP });
   const settings = new SettingsRepo(t.database.db, clock);
   const audit = new AuditRepo(t.database.db, clock);
   const secrets = new MemorySecretStore({ 'hmac.key': Buffer.alloc(32, 9).toString('base64') });
@@ -132,7 +142,6 @@ export async function makeGateway(opts: { setup?: GatewayDeps['setup']; runner?:
     database: t.database,
     paths: { probesDir: path.join(t.dir, 'probes') },
     runner: opts.runner,
-    setup: opts.setup,
     staticDir: opts.staticDir,
     serviceVersion: '0.1.0-test',
     startedAt: clock.nowIso(),

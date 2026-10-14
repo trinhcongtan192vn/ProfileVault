@@ -79,7 +79,7 @@ export const LAYER_D: ConsistencyRule[] = [
       const groups = groupBy(ctx.allBindings, key);
       return ctx.allBindings.map((s) => {
         if (!s.furyProfile) return unknown(s.binding.id, 'Không đọc được cấu hình profile từ Fury.');
-        if (!s.furyProfile.seed) return unknown(s.binding.id, 'Fury không trả seed nhiễu (SPIKE-P2); không so trùng được.', { personaId: s.furyProfile.personaId ?? null });
+        if (!s.furyProfile.seed) return unknown(s.binding.id, 'Fury không trả seed nhiễu (fp_seed); không so trùng được.', { personaId: s.furyProfile.personaId ?? null });
         const k = key(s);
         const peers = (k ? groups.get(k) ?? [] : []).filter((p) => p.binding.id !== s.binding.id);
         if (peers.length === 0) return pass(s.binding.id, { personaId: s.furyProfile.personaId });

@@ -56,7 +56,10 @@ describe('wiring Fury ↔ poller ↔ Health (spec 003 T015)', () => {
     const fake = new FakeFury({ version: '0.2.23' });
     await fake.start();
     try {
-      const env = { PV_APPDATA_DIR: tmp(), PV_LOCALAPPDATA_DIR: tmp() };
+      const appData = tmp();
+      // cổng 0: không đụng ProfileVault đang chạy ở 50410
+      writeFileSync(path.join(appData, 'config.json'), JSON.stringify({ gateway: { host: '127.0.0.1', port: 0 } }));
+      const env = { PV_APPDATA_DIR: appData, PV_LOCALAPPDATA_DIR: tmp() };
       const timers = new FakeTimers();
       const clock = new FakeClock('2026-10-14T03:00:00.000Z');
       const fury = new HttpFuryClient({ baseUrl: fake.baseUrl, supportedVersions: '>=0.2.21 <0.4.0', timers, clock, maxRetries: 0 });

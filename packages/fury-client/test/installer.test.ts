@@ -26,12 +26,14 @@ const PIN: FuryReleasePin = {
 };
 
 /** Fury giả: bộ cài tạo fury-agent.exe; install-core ghi nhận core. Đầu ra theo mẫu đã xác minh trên 0.3.22. */
-function fakeMachine(localAppData: string, opts: { setupCreatesAgent?: boolean; coreInstalled?: boolean } = {}) {
+function fakeMachine(localAppData: string, opts: { setupCreatesAgent?: boolean; coreInstalled?: boolean; apiPortSet?: boolean } = {}) {
   const calls: string[][] = [];
   let core = opts.coreInstalled ?? false;
   const agent = path.join(localAppData, 'Fury', 'fury-agent.exe');
   const exec = async (file: string, args: string[]): Promise<ExecResult> => {
     calls.push([path.basename(file), ...args.map((a) => (/^([A-Za-z]:)?[\\/].+[\\/]/.test(a) ? path.basename(a) : a))]);
+    if (file === 'reg') return opts.apiPortSet ? { code: 0, stdout: '    FURY_API_PORT    REG_SZ    35000', stderr: '' } : { code: 1, stdout: '', stderr: 'not found' };
+    if (file === 'setx') return { code: 0, stdout: 'SUCCESS', stderr: '' };
     if (file.endsWith('setup.exe')) {
       if (opts.setupCreatesAgent !== false) {
         mkdirSync(path.dirname(agent), { recursive: true });
@@ -91,6 +93,9 @@ describe('FuryInstaller (SPEC-00 §11.1)', () => {
       ['fury-agent.exe', '--help'],
       ['fury-agent.exe', 'install-core'],
       ['fury-agent.exe', 'install-core', 'fury-core-0.3.22-windows-x64.tar.xz'],
+      // bật automation API của Fury cho user (chưa có → setx)
+      ['reg', 'query', 'HKCU\\Environment', '/v', 'FURY_API_PORT'],
+      ['setx', 'FURY_API_PORT', '35000'],
     ]);
     expect(readdirSync(dl)).toEqual([]);
     const states = statuses.map((x) => `${x.state}:${x.step ?? ''}`);
@@ -103,14 +108,15 @@ describe('FuryInstaller (SPEC-00 §11.1)', () => {
 
   it('Fury đã cài đủ: không tải, không chạy bộ cài', async () => {
     const la = tmp();
-    const m = fakeMachine(la, { coreInstalled: true });
+    const m = fakeMachine(la, { coreInstalled: true, apiPortSet: true });
     mkdirSync(path.dirname(m.agent), { recursive: true });
     writeFileSync(m.agent, 'x');
     const hits: string[] = [];
     const s = await make(la, tmp(), m.exec, fakeFetch({}, hits)).ensure();
     expect(s.state).toBe('ready');
     expect(hits).toEqual([]);
-    expect(m.calls.map((c) => c[1])).toEqual(['--help', 'install-core']);
+    // FURY_API_PORT đã có → không ghi đè (không gọi setx)
+    expect(m.calls.map((c) => c[0] === 'fury-agent.exe' ? c[1] : c[0])).toEqual(['--help', 'install-core', 'reg']);
   });
 
   it('có app nhưng thiếu core: chỉ tải và cài core', async () => {

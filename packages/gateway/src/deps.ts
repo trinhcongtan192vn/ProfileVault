@@ -88,6 +88,8 @@ export interface GatewayDeps {
   runner?: RunnerFacade;
   /** Bộ tự cài Fury (SPEC-00 §11.1); không có → `/internal/fury/install` báo `disabled`. */
   furyInstall?: { status(): FuryInstallStatus; ensure(): Promise<FuryInstallStatus> };
+  /** File `api-token` của Fury (đọc khi chưa lưu token ở Cài đặt). */
+  furyTokenFile?: string;
   /** Thư mục SPA đã build (apps/dashboard/dist); không có → trang HTML tối thiểu. */
   staticDir?: string;
   serviceVersion?: string;

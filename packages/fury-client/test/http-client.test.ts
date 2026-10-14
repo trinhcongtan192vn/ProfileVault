@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { FakeClock, PvError } from '@sctech/profilevault-contract';
 import { MemorySecretStore } from '@sctech/profilevault-core';
 import { DEFAULT_ENDPOINT_MAP, FakeTimers, FsProfileConfigFileSource, HttpFuryClient, fromSecretStore } from '../src/index.js';
-import { FakeFury } from './fake-fury.js';
+import { FakeFury, TEST_ENDPOINT_MAP } from './fake-fury.js';
 
 const RANGE = '>=0.2.21 <0.4.0';
 let fake: FakeFury;
@@ -33,7 +33,18 @@ beforeEach(async () => {
   fake = new FakeFury({ version: '0.2.23' });
   await fake.start();
   fake.setProfiles([
-    { id: 'p1', name: 'Kênh A', tags: ['pv:youtube'], os: 'windows', timezone: 'Europe/Berlin', languages: ['de-DE'], proxy: { id: 'px1', username: 'u', password: 'secret-pass' } },
+    {
+      id: 'p1',
+      name: 'Kênh A',
+      tags: ['pv:youtube'],
+      personaId: 'win11-iris-xe-1920x1080',
+      persona: { platform: 'Windows 11', gpuRenderer: 'ANGLE (Intel, Intel(R) Iris(R) Xe Graphics)', screen: { width: 1920, height: 1080 } },
+      // u64 thật của Fury: vượt Number.MAX_SAFE_INTEGER
+      seed: '7021075368349779267',
+      timezone: 'Europe/Berlin',
+      languages: ['de-DE'],
+      proxy: { id: 'px1', username: 'u', password: 'secret-pass' },
+    },
     { id: 'p2', name: 'Kênh B' },
   ]);
   timers = new FakeTimers();
@@ -75,26 +86,38 @@ describe('HttpFuryClient (SPEC-01)', () => {
     expect(await c.listProfiles()).toHaveLength(2);
   });
 
-  it('getProfile đủ trường có, thiếu → undefined, không chứa mật khẩu proxy; 404 → INPUT_INVALID', async () => {
+  it('getProfile từ danh sách + danh mục persona; seed u64 giữ nguyên; không chứa mật khẩu proxy; không có → INPUT_INVALID', async () => {
     const d = await client().getProfile('p1');
-    expect(d).toMatchObject({ id: 'p1', osFamily: 'windows', timezone: 'Europe/Berlin', languages: ['de-DE'], proxyRef: 'px1' });
-    expect(d.persona).toBeUndefined();
-    expect(d.seed).toBeUndefined();
+    expect(d).toMatchObject({
+      id: 'p1',
+      personaId: 'win11-iris-xe-1920x1080',
+      osFamily: 'windows',
+      persona: { platform: 'Windows 11', gpuRenderer: 'ANGLE (Intel, Intel(R) Iris(R) Xe Graphics)', screen: { width: 1920, height: 1080 } },
+      seed: '7021075368349779267',
+      timezone: 'Europe/Berlin',
+      languages: ['de-DE'],
+      proxyRef: 'px1',
+      geolocation: { mode: 'auto' },
+    });
     expect(JSON.stringify(d)).not.toContain('secret-pass');
+    expect(JSON.stringify(d)).not.toContain('username');
+    const p2 = await client().getProfile('p2');
+    expect(p2.timezone).toBeUndefined();
+    expect(p2.seed).toBeUndefined();
     await expectPv(client().getProfile('missing'), 'INPUT_INVALID');
   });
 
-  it('getProfile hợp nhất fallback file cấu hình (TODO(SPIKE-P2)) cho trường còn thiếu', async () => {
+  it('getProfile hợp nhất nguồn file tùy chọn cho trường API không có', async () => {
     const dir = mkdtempSync(path.join(os.tmpdir(), 'pv-fury-'));
     try {
       mkdirSync(path.join(dir, 'profiles', 'p1'), { recursive: true });
-      writeFileSync(path.join(dir, 'profiles', 'p1', 'profile.json'), JSON.stringify({ seed: 's-1', timezone: 'Asia/Tokyo', personaId: 'win-01' }));
+      writeFileSync(path.join(dir, 'profiles', 'p1', 'profile.json'), JSON.stringify({ seed: 's-1', timezone: 'Asia/Tokyo', webrtcMode: 'disable_non_proxied' }));
       const c = client({ profileConfigSource: new FsProfileConfigFileSource({ dataDir: dir }) });
       const d = await c.getProfile('p1');
-      expect(d.seed).toBe('s-1');
-      expect(d.personaId).toBe('win-01');
+      expect(d.seed).toBe('7021075368349779267'); // API thắng
       expect(d.timezone).toBe('Europe/Berlin'); // API thắng
-      expect((await c.capabilities()).profileConfig).toBe('native');
+      expect(d.webrtcMode).toBe('disable_non_proxied'); // API không có → lấy từ file
+      expect((await c.capabilities()).profileConfig).toBe('fallback');
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }
@@ -102,23 +125,24 @@ describe('HttpFuryClient (SPEC-01)', () => {
 
   it('capabilities theo bộ ánh xạ; năng lực missing → FURY_CAPABILITY_MISSING', async () => {
     const caps = await client().capabilities();
+    // Fury 0.3.22 (SPIKE-P2): không có route một profile / trạng thái → suy từ danh sách; không có kiểm exit
     expect(caps).toEqual({
       listProfiles: 'native',
-      getStatus: 'native',
+      getStatus: 'fallback',
       launchCdp: 'native',
       stop: 'native',
-      profileConfig: 'native',
-      seed: 'missing',
-      checkExit: 'native',
-      asnType: 'fallback',
+      profileConfig: 'fallback',
+      seed: 'native',
+      checkExit: 'missing',
+      asnType: 'missing',
     });
-    const c = client({ endpoints: { ...DEFAULT_ENDPOINT_MAP, checkExit: { source: 'missing' } } });
-    await expectPv(c.checkExit('p1'), 'FURY_CAPABILITY_MISSING');
-    expect((await c.capabilities()).checkExit).toBe('missing');
-    expect((await c.capabilities()).asnType).toBe('missing');
-    // Fury thật không có route → 404 trên checkExit cũng là capability missing
-    fake.setCapability('checkExit', false);
     await expectPv(client().checkExit('p1'), 'FURY_CAPABILITY_MISSING');
+    expect(DEFAULT_ENDPOINT_MAP.checkExit.source).toBe('missing');
+    const t = client({ endpoints: TEST_ENDPOINT_MAP });
+    expect((await t.capabilities()).checkExit).toBe('native');
+    // route bị tắt → 404 → capability missing
+    fake.setCapability('checkExit', false);
+    await expectPv(t.checkExit('p1'), 'FURY_CAPABILITY_MISSING');
   });
 
   it('thử lại 5xx: 500×2 rồi 200 → thành công với backoff 1 s → 3 s; 500×3 → FURY_OFFLINE', async () => {
@@ -132,12 +156,15 @@ describe('HttpFuryClient (SPEC-01)', () => {
   it('launch: kiểm status trước, đang mở → PROFILE_BUSY không gọi launch; không thử lại; stop idempotent', async () => {
     fake.setOpen('p1', true, 'app');
     const e = await expectPv(client().launch('p1', { cdp: true }), 'PROFILE_BUSY');
-    expect(e.detail?.via).toBe('app');
+    expect(e.detail?.via).toBe('unknown'); // Fury chỉ báo running, không báo mở qua đâu
     expect(fake.launchCount('p1')).toBe(0);
 
     fake.setOpen('p1', false);
     const ok = await client().launch('p1', { cdp: true });
     expect(ok.cdpEndpoint).toMatch(/^ws:\/\/127\.0\.0\.1/);
+    expect(ok.sessionRef).toMatch(/^\d+$/); // pid
+    const start = fake.requests().find((r) => r.path === '/v1/profiles/start');
+    expect(start).toMatchObject({ method: 'POST', body: { id: 'p1', cdp: true } });
     expect(fake.isOpen('p1')).toBe(true);
     await client().stop('p1');
     expect(fake.isOpen('p1')).toBe(false);
@@ -178,15 +205,27 @@ describe('HttpFuryClient (SPEC-01)', () => {
     await expectPv(client({ fetch: bad }).getStatus('p1'), 'FURY_OFFLINE', 'bad_response');
     const missing: typeof fetch = async () => new Response('{"foo":1}', { status: 200 });
     const e = await expectPv(client({ fetch: missing }).getStatus('p1'), 'FURY_OFFLINE', 'bad_response');
-    expect(e.detail?.issues).toEqual([expect.objectContaining({ path: 'open' })]);
+    expect(e.detail?.issues).toEqual(expect.arrayContaining([expect.objectContaining({ path: 'ok' })]));
     expect(timers.sleeps).toEqual([]);
   });
 
   it('checkExit qua FakeFury', async () => {
     fake.setExit('p1', { ip: '5.6.7.8', country: 'DE', city: 'Frankfurt', timezone: 'Europe/Berlin', asn: 3320, asnOrg: 'DTAG', asnType: 'isp', latencyMs: 120 });
-    const e = await client().checkExit('p1');
+    const t = client({ endpoints: TEST_ENDPOINT_MAP });
+    const e = await t.checkExit('p1');
     expect(e).toMatchObject({ ok: true, ip: '5.6.7.8', country: 'DE', asn: 3320, asnType: 'isp' });
     fake.setExit('p1', { error: 'proxy unreachable' });
-    expect(await client().checkExit('p1')).toMatchObject({ ok: false, error: 'proxy unreachable' });
+    expect(await t.checkExit('p1')).toMatchObject({ ok: false, error: 'proxy unreachable' });
+  });
+
+  it('Fury từ chối launch (400 failed) → PROFILE_BUSY khi đang chạy, INPUT_INVALID khi không có profile', async () => {
+    // getStatus báo đóng nhưng agent đã mở (vd mở từ app giữa hai lời gọi)
+    const fetchFn: typeof fetch = async (input, init) => {
+      const url = input instanceof Request ? input.url : input.toString();
+      if (url.endsWith('/v1/profiles/start')) return new Response('{"error":"failed","message":"profile p1 is already running"}', { status: 400 });
+      return fetch(input, init);
+    };
+    await expectPv(client({ fetch: fetchFn }).launch('p1', { cdp: true }), 'PROFILE_BUSY');
+    await expectPv(client().stop('nope'), 'INPUT_INVALID');
   });
 });

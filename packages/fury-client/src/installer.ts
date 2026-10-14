@@ -58,6 +58,9 @@ export interface FuryInstallerOptions {
   onStatus?: (status: FuryInstallStatus) => void;
 }
 
+/** Cổng quy ước của automation API Fury (agent/src/http.rs `DEFAULT_PORT`). */
+export const FURY_API_DEFAULT_PORT = 35000;
+
 const SETUP_TIMEOUT_MS = 10 * 60_000;
 const CORE_TIMEOUT_MS = 10 * 60_000;
 const PROBE_TIMEOUT_MS = 30_000;
@@ -152,6 +155,7 @@ export class FuryInstaller {
         rmSync(core, { force: true });
         this.opts.logger?.info('đã cài core Fury', { coreVersion });
       }
+      await this.ensureApiPort();
       this.set(this.make('ready', { appVersion, coreVersion }));
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
@@ -159,6 +163,19 @@ export class FuryInstaller {
       this.set(this.make('failed', { error: message, appVersion: this.current.appVersion, coreVersion: this.current.coreVersion }));
     }
     return this.current;
+  }
+
+  /**
+   * Bật automation API của Fury: agent chỉ mở cổng khi có biến môi trường `FURY_API_PORT` (agent/src/main.rs),
+   * và app Fury truyền nguyên môi trường khi khởi agent (desktop/src-tauri/src/agent.rs). Đặt biến cho user
+   * Windows nếu chưa có; không ghi đè giá trị người dùng đã đặt. Agent đang chạy chỉ nhận sau khi khởi lại.
+   */
+  private async ensureApiPort(): Promise<void> {
+    const q = await this.exec('reg', ['query', 'HKCU\\Environment', '/v', 'FURY_API_PORT'], PROBE_TIMEOUT_MS);
+    if (q.code === 0 && /FURY_API_PORT/.test(q.stdout)) return;
+    const r = await this.exec('setx', ['FURY_API_PORT', String(FURY_API_DEFAULT_PORT)], PROBE_TIMEOUT_MS);
+    if (r.code === 0) this.opts.logger?.info('đã bật automation API của Fury', { port: FURY_API_DEFAULT_PORT });
+    else this.opts.logger?.warn('không đặt được FURY_API_PORT', { code: r.code, error: lastLine(r.stderr || r.stdout) });
   }
 
   private async probe(args: string[]): Promise<string> {

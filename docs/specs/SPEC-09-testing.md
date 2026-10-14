@@ -21,7 +21,7 @@
 ## 3. Công cụ giả lập
 
 ### 3.1 `FakeFury`
-HTTP server trong `packages/fury-client/test/fake-fury.ts`, cài đặt cùng hợp đồng HTTP mà adapter Fury dùng (theo kết quả **[SPIKE-P2]**):
+HTTP server trong `packages/fury-client/test/fake-fury.ts`, cài đặt cùng hợp đồng HTTP mà adapter Fury dùng (API Fury 0.3.22 đã xác minh ở SPIKE-P2; thêm route chỉ cho test `/v1/test/check-exit` qua `TEST_ENDPOINT_MAP` vì Fury chưa có kiểm exit):
 - Danh sách profile, cấu hình persona/múi giờ/ngôn ngữ chỉnh được theo kịch bản.
 - Trạng thái mở/đóng; giả lập "người đang mở profile".
 - `launch` khởi một Chromium thường có CDP và trả endpoint; `stop` đóng nó.

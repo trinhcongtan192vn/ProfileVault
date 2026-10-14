@@ -1,3 +1,5 @@
+import { readFile } from 'node:fs/promises';
+import path from 'node:path';
 import {
   PvError,
   systemClock,
@@ -13,6 +15,7 @@ import {
 import type { Logger, SecretStore } from '@sctech/profilevault-core';
 import {
   DEFAULT_ENDPOINT_MAP,
+  osFamilyOf,
   type EndpointSpec,
   type FuryCapability,
   type FuryEndpointMap,
@@ -45,6 +48,30 @@ export interface HttpFuryClientOptions {
 
 export function fromSecretStore(store: SecretStore): () => Promise<string | undefined> {
   return () => store.get('fury.token');
+}
+
+/** File token của automation API Fury: `<thư mục dữ liệu Fury>/api-token` (agent/src/http.rs). */
+export function furyTokenFile(env: NodeJS.ProcessEnv, dataDir: string | null): string | undefined {
+  const dir = dataDir ?? env.FURY_HOME ?? (env.APPDATA ? path.join(env.APPDATA, 'Fury') : undefined);
+  return dir ? path.join(dir, 'api-token') : undefined;
+}
+
+/**
+ * Token đã lưu ở Cài đặt (DPAPI) thắng; không có → đọc file `api-token` do Fury tự tạo, mỗi lần gọi
+ * (Fury có thể tạo lại). Không lưu, không log giá trị.
+ */
+export function furyTokenSource(store: SecretStore, tokenFile: string | undefined): () => Promise<string | undefined> {
+  return async () => {
+    const saved = await store.get('fury.token');
+    if (saved) return saved;
+    if (!tokenFile) return undefined;
+    try {
+      const t = (await readFile(tokenFile, 'utf8')).trim();
+      return t.length > 0 ? t : undefined;
+    } catch {
+      return undefined;
+    }
+  };
 }
 
 type Cap = Exclude<FuryCapability, never>;
@@ -98,6 +125,22 @@ export class HttpFuryClient implements FuryClient {
 
   async getProfile(profileId: string): Promise<FuryProfileDetail> {
     const detail = await this.call('getProfile', { profileId }, { retry: true });
+    if (detail.personaId && this.endpoints.personas.source !== 'missing') {
+      try {
+        const persona = (await this.call('personas', undefined, { retry: true })).find((p) => p.id === detail.personaId);
+        if (persona?.os) {
+          const own = detail.persona;
+          detail.persona = { ...own, platform: persona.os };
+          const gpu = own?.gpuRenderer ?? persona.gpu;
+          if (gpu) detail.persona.gpuRenderer = gpu;
+          const screen = own?.screen ?? persona.screen;
+          if (screen) detail.persona.screen = screen;
+          detail.osFamily = osFamilyOf(persona.os) ?? detail.osFamily;
+        }
+      } catch (err) {
+        this.opts.logger?.debug('không đọc được danh mục persona Fury', { error: String(err) });
+      }
+    }
     if (!this.opts.profileConfigSource) return detail;
     const extra = await this.opts.profileConfigSource.read(profileId);
     if (!extra) return detail;
@@ -212,9 +255,11 @@ export class HttpFuryClient implements FuryClient {
       throw furyOffline('network', `Không kết nối được Fury (${cap})`, { capability: cap }, err);
     }
     clearTimeout(timer);
-    if (!res.ok) throw mapHttpStatus(cap, res.status, profileId);
-    if (res.status === 204) return spec.parse(undefined, { now: this.clock.nowIso() });
-    const text = await res.text();
+    if (!res.ok) throw mapHttpStatus(cap, res.status, profileId, await furyErrorMessage(res));
+    const ctx: ParseContext = { now: this.clock.nowIso(), params };
+    if (res.status === 204) return spec.parse(undefined, ctx);
+    const rawText = await res.text();
+    const text = this.endpoints.meta.normalizeJson ? this.endpoints.meta.normalizeJson(rawText) : rawText;
     let raw: unknown = undefined;
     if (text.length > 0) {
       try {
@@ -223,7 +268,17 @@ export class HttpFuryClient implements FuryClient {
         throw furyOffline('bad_response', `Fury trả nội dung không phải JSON cho ${cap}`, { capability: cap });
       }
     }
-    return spec.parse(raw, { now: this.clock.nowIso() });
+    return spec.parse(raw, ctx);
+  }
+}
+
+/** `message` trong thân lỗi Fury (`{ error, message }`), cắt ngắn; không đọc được → undefined. */
+async function furyErrorMessage(res: Response): Promise<string | undefined> {
+  try {
+    const body = (await res.json()) as { message?: unknown };
+    return typeof body.message === 'string' ? body.message.slice(0, 300) : undefined;
+  } catch {
+    return undefined;
   }
 }
 

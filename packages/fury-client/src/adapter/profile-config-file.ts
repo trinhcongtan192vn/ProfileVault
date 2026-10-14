@@ -1,6 +1,7 @@
 /**
  * Fallback đọc cấu hình profile từ thư mục dữ liệu Fury khi automation API không trả (SPEC-01 §4).
- * CHỈ ĐỌC. TODO(SPIKE-P2): vị trí file và định dạng là giả định; tiêm `locate`/`parse` sau spike.
+ * CHỈ ĐỌC. SPIKE-P2: Fury 0.3.22 lưu profile trong `fury.db` (SQLite) và API đã trả đủ trường, nên service
+ * KHÔNG dùng nguồn này; giữ lại cho trường hợp phiên bản sau bỏ trường khỏi API (tiêm `locate`/`parse`).
  */
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
@@ -12,9 +13,9 @@ export interface ProfileConfigFileSource {
 
 export interface FsProfileConfigFileSourceOptions {
   dataDir: string;
-  /** Đường dẫn file cấu hình của profile. Mặc định `<dataDir>/profiles/<id>/profile.json` — TODO(SPIKE-P2). */
+  /** Đường dẫn file cấu hình của profile. Mặc định `<dataDir>/profiles/<id>/profile.json` (không phải định dạng thật của Fury). */
   locate?: (dataDir: string, profileId: string) => string;
-  /** Chuyển JSON thô → trường của FuryProfileDetail. Mặc định chỉ lấy các trường trùng tên — TODO(SPIKE-P2). */
+  /** Chuyển JSON thô → trường của FuryProfileDetail. Mặc định chỉ lấy các trường trùng tên. */
   parse?: (raw: unknown) => Partial<FuryProfileDetail>;
 }
 
