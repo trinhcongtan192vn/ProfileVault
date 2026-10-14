@@ -16,6 +16,8 @@ export class RunStore {
     const row = this.raw(id);
     return row && RunRecordSchema.parse({ ...row, needsUser: row.needsUserJson ? JSON.parse(row.needsUserJson) as unknown : null, errorDetail: row.errorDetailJson ? JSON.parse(row.errorDetailJson) as unknown : null, steps: this.database.db.select().from(runSteps).where(eq(runSteps.runId, id)).orderBy(asc(runSteps.seq)).all(), input: this.input(row.jobId) });
   }
+  runByJob(jobId: string): RunRecord | undefined { const row = this.database.db.select({ id: runs.id }).from(runs).where(eq(runs.jobId, jobId)).get(); return row ? this.run(row.id) : undefined; }
+  jobByKey(clientId: string, key: string): JobRecord | undefined { const row = this.database.db.select({ id: jobs.id }).from(jobs).where(and(eq(jobs.clientId, clientId), eq(jobs.idempotencyKey, key))).get(); return row ? this.job(row.id) : undefined; }
   raw(id: string) { return this.database.db.select().from(runs).where(eq(runs.id, id)).get(); }
   listRuns(): RunRecord[] { return this.database.db.select({ id: runs.id }).from(runs).orderBy(asc(runs.queuedAt), asc(runs.id)).all().map((r) => this.run(r.id)!); }
   checkpoint(id: string): Checkpoint { const raw = this.raw(id)?.checkpointJson; return CheckpointSchema.parse(raw ? JSON.parse(raw) as unknown : {}); }

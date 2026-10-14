@@ -2,7 +2,7 @@ import { appendFileSync, existsSync, mkdirSync, readdirSync, rmSync, statSync, w
 import path from 'node:path';
 import os from 'node:os';
 import { chromium, type Browser, type Page } from 'playwright';
-import { EnqueueInputSchema, HumanGateSchema, PvError, SessionCheckOutputSchema, StepOptionsSchema, isRetryable, type Clock, type Config, type EnqueueInput, type GateResult, type HumanGate, type RunRecord, type RunStatus, type StepOptions } from '@sctech/profilevault-contract';
+import { collectFileRefs, EnqueueInputSchema, HumanGateSchema, PvError, SessionCheckOutputSchema, StepOptionsSchema, isRetryable, type Clock, type Config, type EnqueueInput, type GateResult, type HumanGate, type RunRecord, type RunStatus, type StepOptions } from '@sctech/profilevault-contract';
 import type { EventBus, Logger } from '@sctech/profilevault-core';
 import type { AuditRepo, Database, SettingsRepo } from '@sctech/profilevault-db';
 import { realTimers, type FuryClient, type Timers } from '@sctech/profilevault-fury-client';
@@ -15,6 +15,8 @@ import { Scheduler } from './scheduler.js';
 import { CpuLoad } from './cpu-load.js';
 
 const TERMINAL = new Set<RunStatus>(['done', 'failed', 'cancelled']);
+/** Setting chỉ người đặt (dashboard): spike P4 đạt → mở khóa flow có chế độ L2/L3. */
+export const P4_SETTING = 'spike.p4Passed';
 interface ActiveRun { promise: Promise<void>; page?: Page; browser?: Browser; owned: boolean; cancel?: PvError; gate?: { resolve(value: GateResult): void; reject(error: Error): void }; gateSince?: number; gateTime: number; started: number; pauseStep?: () => void; resumeStep?: () => void }
 export interface RunnerDeps {
   database: Database; clock: Clock; config: Config; settings: SettingsRepo; audit: AuditRepo; bus: EventBus; health: HealthService; fury: FuryClient; logger: Logger; runsDir: string; loader: PackLoader;
@@ -49,6 +51,11 @@ export class Runner {
   }
   listNeedsUser(): RunRecord[] { return this.store.listRuns().filter((r) => r.status === 'needs_user'); }
   listFlows() { return this.d.loader.listFlows(); }
+  /** Định nghĩa flow đã nạp (Job service kiểm input/manifest). */
+  getFlow(id: string) { return this.d.loader.get(id)?.flow; }
+  getJob(id: string) { return this.store.job(id); }
+  runForJob(jobId: string) { return this.store.runByJob(jobId); }
+  jobByKey(clientId: string, key: string) { return this.store.jobByKey(clientId, key); }
   async reloadPacks() { for (const p of [...this.d.loader.packs.values()]) await this.d.loader.load(p.directory); return this.systemInfo().packs; }
   systemInfo() {
     const runs = this.store.listRuns();
@@ -63,9 +70,14 @@ export class Runner {
     if (!file.startsWith(path.resolve(this.d.runsDir) + path.sep) || !file.startsWith(path.resolve(run.artifactsDir) + path.sep)) return;
     return file;
   }
+  /** Flow ghi lên nền tảng (có chế độ L2/L3) chỉ chạy sau khi người xác nhận SPIKE-P4 đạt trên dashboard. */
+  private assertP4(flowId: string, modes: readonly string[]): void {
+    if (modes.length > 0 && this.d.settings.get<boolean>(P4_SETTING) !== true) throw new PvError('FLOW_DISABLED', 'Flow upload bị khóa tới khi spike P4 được xác nhận đạt (Cài đặt → Runner)', { flowId, reason: 'p4_not_passed' });
+  }
   async enqueue(input: EnqueueInput): Promise<RunRecord> {
     const parsed = EnqueueInputSchema.parse(input);
     const { flow } = this.d.loader.assertEnabled(parsed.flowId);
+    this.assertP4(parsed.flowId, flow.manifest.modes);
     const b = this.d.health.getBinding(parsed.bindingId); if (!b || b.archivedAt) throw new PvError('ACCOUNT_NOT_BOUND', 'Không có binding đang hoạt động');
     if (parsed.mode && !flow.manifest.modes.includes(parsed.mode)) throw new PvError('INPUT_INVALID', 'Flow không hỗ trợ chế độ này');
     if (flow.manifest.modes.length && !parsed.mode) throw new PvError('INPUT_INVALID', 'Cần chọn chế độ flow');
@@ -140,7 +152,8 @@ export class Runner {
     const requiredLevel = this.store.job(run.jobId)?.mode === 'L3' ? 3 : found?.flow.manifest.minLevel ?? 1;
     if (b.level === 0 || b.level < requiredLevel) { await this.finish(run.id, 'cancelled', new PvError('LEVEL_TOO_LOW')); return false; }
     try {
-      this.d.loader.assertEnabled(run.flowId, 'version' in health ? health.version : undefined);
+      const { flow: preflightFlow } = this.d.loader.assertEnabled(run.flowId, 'version' in health ? health.version : undefined);
+      this.assertP4(run.flowId, preflightFlow.manifest.modes);
       if (found?.flow.manifest.version !== run.flowVersion) throw new PvError('FLOW_DISABLED', 'Flow đã đổi phiên bản, cần tạo lượt mới');
       this.d.loader.validateBinding(b.platform, b.packConfig);
     } catch (err) { await this.finish(run.id, 'failed', new PvError('FLOW_DISABLED', String(err))); return false; }
@@ -301,13 +314,15 @@ export class Runner {
       const context: FlowContext = {
         input: flow.input.parse(this.store.input(run.jobId)), binding, mode: job.mode, state: cp.state,
         get page() { return a.page!; },
-        get ui() { return new SafeUi({ page: a.page!, sites: run.flowId.startsWith('generic/') ? platform?.manifest.generic?.sites ?? flow.manifest.site : flow.manifest.site, forbidden: pack.forbidden, timers: thisTimers, actionDelayMs: humanize?.actionDelayMs, typingDelayMs: humanize?.typingDelayMs, denied: (detail) => audit.append({ actorType: 'system', action: 'run.forbidden', targetType: 'run', targetId: id, detail }) }); },
+        get ui() { return new SafeUi({ page: a.page!, verifiedFiles, sites: run.flowId.startsWith('generic/') ? platform?.manifest.generic?.sites ?? flow.manifest.site : flow.manifest.site, forbidden: pack.forbidden, timers: thisTimers, actionDelayMs: humanize?.actionDelayMs, typingDelayMs: humanize?.typingDelayMs, denied: (detail) => audit.append({ actorType: 'system', action: 'run.forbidden', targetType: 'run', targetId: id, detail }) }); },
         step, humanGate: gate,
         fail: (code, message, detail) => { throw new PvError(code, message, detail); },
         log: (message) => log(message),
         artifact: async (name, data) => { const file = this.artifactPath(id, name); if (!file) throw new PvError('FILE_NOT_ALLOWED'); writeFileSync(file, data); return file; },
       };
       const thisTimers = this.d.timers; const audit = this.d.audit;
+      // File được upload: chỉ các file Job service đã kiểm trong input (SPEC-03 §4.2, SPEC-06 §3)
+      const verifiedFiles = Object.fromEntries(collectFileRefs(this.store.input(run.jobId)).map((r) => [r.path, r.sha256]));
       let output = flow.output.parse(await flow.run(context));
       if (a.cancel) throw a.cancel;
       if (job.mode === 'L2' && finalCount !== 1) throw new PvError('INPUT_INVALID', 'Flow L2 thiếu bước final');
@@ -329,6 +344,10 @@ export class Runner {
     this.store.patchJob(job.id, { resultJson: output === undefined ? null : JSON.stringify(output), errorCode: error?.code ?? null, errorDetailJson: error?.detail ? JSON.stringify(error.detail) : null });
     this.status(id, status);
     if (status === 'done' && run.flowId.endsWith('/session-check')) await this.d.health.recordSessionCheck(run.bindingId, { ...SessionCheckOutputSchema.parse(output), runId: id });
+    if (status === 'done' && run.flowId === 'generic/probe' && output && typeof output === 'object' && 'raw' in output) {
+      // Probe tự động (SPEC-04 §2.3): Health chuẩn hóa + chạy kiểm nhất quán; lỗi định dạng không làm hỏng run
+      try { await this.d.health.importProbe(run.bindingId, { raw: (output as { raw: object }).raw }, 'flow'); } catch (err) { this.d.logger.warn('Nhập probe từ flow lỗi', { runId: id, error: String(err) }); }
+    }
     if (status !== 'cancelled') await this.d.health.recordRunOutcome({ bindingId: run.bindingId, runId: id, flowId: run.flowId, mode: job.mode, status, errorCode: error?.code, l2Review: output && typeof output === 'object' ? (output as { l2Review?: 'correct' | 'fixed' }).l2Review : undefined, step: run.currentStep ?? undefined });
   }
   async cancelRun(id: string, actor: string): Promise<void> {

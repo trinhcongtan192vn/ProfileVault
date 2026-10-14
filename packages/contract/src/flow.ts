@@ -27,3 +27,37 @@ export const YoutubeBindingConfigSchema = z.object({ studioLanguage: z.literal('
 export const ForbiddenPatternsSchema = z.array(z.string());
 export const ScheduleSlotsSchema = z.array(z.object({ bindingId: BindingIdSchema, day: z.string().regex(/^\d{4}-\d{2}-\d{2}$/), at: IsoDateTimeSchema }));
 export type ScheduleSlot = z.infer<typeof ScheduleSlotsSchema>[number];
+
+// ---- Flow chính thức M1 (SPEC-04 §2.3–2.5, §5) ----
+const FileRefInput = z.object({ path: z.string().min(1), sha256: z.string().regex(/^[0-9a-fA-F]{64}$/) });
+export const YoutubeUploadInputSchema = z.object({
+  video: FileRefInput,
+  thumbnail: FileRefInput.optional(),
+  /** Phụ đề cũng là file đi qua kiểm SHA-256 của Job service (SPEC-04 §5.1 + decisions 2026-10-15). */
+  captions: z.array(FileRefInput.extend({ language: z.string().min(2) })).max(5).optional(),
+  title: z.string().min(1).max(100),
+  description: z.string().max(5000),
+  madeForKids: z.boolean(),
+  tags: z.array(z.string().min(1)).optional().refine((t) => !t || t.join(',').length <= 500, 'Tổng tag ≤ 500 ký tự'),
+  playlistNames: z.array(z.string().min(1)).optional(),
+  videoLanguage: z.string().optional(),
+  alteredContent: z.boolean().optional(),
+});
+export type YoutubeUploadInput = z.infer<typeof YoutubeUploadInputSchema>;
+export const YoutubeUploadOutputSchema = z.object({
+  videoId: z.string().min(1),
+  studioUrl: z.url(),
+  visibility: z.literal('private'),
+  warnings: z.array(z.string()),
+  l2Review: z.enum(['correct', 'fixed']).optional(),
+});
+export type YoutubeUploadOutput = z.infer<typeof YoutubeUploadOutputSchema>;
+
+export const ProbeFlowInputSchema = z.object({});
+export const ProbeFlowOutputSchema = z.object({ raw: z.record(z.string(), z.unknown()) });
+export const LocatorSpecSchema = z.object({ role: z.string().optional(), name: z.string().optional(), text: z.string().optional(), css: z.string().optional() }).refine((l) => Object.values(l).some((v) => v !== undefined), 'Locator rỗng');
+export type LocatorSpec = z.infer<typeof LocatorSpecSchema>;
+export const ReadPageInputSchema = z.object({ url: z.url(), fields: z.array(z.object({ name: z.string().min(1), locator: LocatorSpecSchema })).min(1).max(50) });
+export const ReadPageOutputSchema = z.object({ values: z.record(z.string(), z.string().nullable()) });
+export const OpenAndWaitInputSchema = z.object({ url: z.url(), message: z.string().min(1).max(500) });
+export const OpenAndWaitOutputSchema = z.object({ choice: z.enum(['done']), note: z.string().optional() });

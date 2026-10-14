@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { SessionCheckInputSchema, SessionCheckOutputSchema } from '@sctech/profilevault-contract';
 import { defineFlow } from '../src/flow.js';
-import { Runner } from '../src/runner.js';
+import { P4_SETTING, Runner } from '../src/runner.js';
 import { runnerHarness, waitFor } from './helpers.js';
 import { chromium } from 'playwright';
 import { createServer } from 'node:net';
@@ -111,6 +111,9 @@ describe('Gate và recovery', () => {
   });
   it('L2 giữ profile chờ user, không chạy final và ghi l2Review', async () => {
     h = await runnerHarness(gateFlow(true)); const b = await h.binding(1, 2);
+    // Flow có chế độ L2/L3 khóa tới khi người xác nhận P4 đạt
+    await expect(h.runner.enqueue({ bindingId: b.id, flowId: 'test/gate', mode: 'L2', idempotencyKey: 'l2-locked' })).rejects.toMatchObject({ code: 'FLOW_DISABLED', detail: { reason: 'p4_not_passed' } });
+    h.settings.set(P4_SETTING, true, 'user');
     const run = await h.runner.enqueue({ bindingId: b.id, flowId: 'test/gate', mode: 'L2', idempotencyKey: 'l2' });
     await h.runner.tick(); await waitFor(() => h!.runner.getRun(run.id)?.status === 'needs_user');
     expect((await h.fury.getStatus('p1')).open).toBe(true);

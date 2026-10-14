@@ -8,9 +8,15 @@
     "src/**/*"
   ],
   "references": [
-    { "path": "../../packages/runner" },
-    { "path": "../../packs/generic" },
-    { "path": "../../packs/youtube" },
+    {
+      "path": "../../packages/runner"
+    },
+    {
+      "path": "../../packs/generic"
+    },
+    {
+      "path": "../../packs/youtube"
+    },
     {
       "path": "../../packages/contract"
     },
@@ -31,6 +37,9 @@
     },
     {
       "path": "../../packages/gateway"
+    },
+    {
+      "path": "../../packages/jobs"
     }
   ]
 }

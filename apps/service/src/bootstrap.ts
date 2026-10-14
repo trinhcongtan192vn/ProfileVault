@@ -19,6 +19,7 @@ import { FURY_API_DEFAULT_PORT, furyTokenFile, furyTokenSource, FuryInstaller, F
 import { createHealth, type HealthBundle, type HealthService } from '@sctech/profilevault-health';
 import { createGateway, type Gateway, type RunnerFacade } from '@sctech/profilevault-gateway';
 import { PackLoader, Runner } from '@sctech/profilevault-runner';
+import { JobService } from '@sctech/profilevault-jobs';
 import { captureHostSnapshot } from '@sctech/profilevault-host-info';
 import os from 'node:os';
 import path from 'node:path';
@@ -214,6 +215,8 @@ export async function bootstrap(opts: BootstrapOptions = {}): Promise<ServiceCon
       await ownedRunner.recover();
     }
     const runner = opts.runner ?? ownedRunner!;
+    // Job service (SPEC-06): cửa duy nhất tạo job cho /api/v1, MCP và dashboard
+    const jobs = 'getFlow' in runner ? new JobService({ clock, config: loaded.config, audit, health: healthBundle.health, runner: runner, logger: logger.child({ pkg: 'jobs' }) }) : undefined;
     // Tự cài Fury bản đã ghim khi máy chưa có (SPEC-00 §11.1).
     // Cài xong còn bật automation API (biến user FURY_API_PORT); token đọc từ file api-token của Fury (SPIKE-P2).
     const furyInstaller =
@@ -250,6 +253,7 @@ export async function bootstrap(opts: BootstrapOptions = {}): Promise<ServiceCon
       database,
       paths: { probesDir: paths.probesDir },
       runner,
+      ...(jobs ? { jobs } : {}),
       furyInstall: furyInstaller,
       furyTokenFile: tokenFile,
       staticDir: opts.staticDir ?? defaultStaticDir(),

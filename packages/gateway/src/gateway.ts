@@ -6,6 +6,10 @@ import fastifyStatic from '@fastify/static';
 import { PvError, type SessionInfo } from '@sctech/profilevault-contract';
 import Fastify, { type FastifyInstance, type FastifyReply, type FastifyRequest } from 'fastify';
 import type { GatewayDeps } from './deps.js';
+import { ClientsRepo } from '@sctech/profilevault-db';
+import { ClientAuth } from './client-auth.js';
+import { handleMcp } from './mcp.js';
+import { registerApiV1Routes } from './routes/api-v1.js';
 import { registerCoreRoutes } from './routes/core.js';
 import { registerDashboardRoutes } from './routes/dashboard.js';
 import { registerOpsRoutes } from './routes/ops.js';
@@ -80,6 +84,21 @@ export async function createGateway(deps: GatewayDeps): Promise<Gateway> {
     return reply.code(204).send();
   });
 
+  // ---- SPEC-05 §4.2: token client cho /api/v1 và /mcp ----
+  const clientAuth = new ClientAuth(new ClientsRepo(deps.database.db), deps.clock);
+  app.addHook('preHandler', async (req, reply) => {
+    if (!req.url.startsWith('/api/') && req.url !== '/mcp' && !req.url.startsWith('/mcp?')) return;
+    try {
+      req.client = await clientAuth.authenticate(req.headers.authorization);
+    } catch (err) {
+      const pe = err instanceof PvError ? err : new PvError('UNAUTHORIZED', 'Token không hợp lệ');
+      req.denyReason = typeof pe.detail?.reason === 'string' ? pe.detail.reason : pe.code;
+      const { status, body } = mapError(pe);
+      if (pe.code === 'RATE_LIMITED') void reply.header('Retry-After', String(typeof pe.detail?.retryAfter === 'number' ? pe.detail.retryAfter : 60));
+      return reply.code(status).send(body);
+    }
+  });
+
   app.addHook('preHandler', async (req, reply) => {
     if (!req.url.startsWith('/internal')) return;
     const s = sessions.touch(req.cookies[SESSION_COOKIE]);
@@ -99,6 +118,7 @@ export async function createGateway(deps: GatewayDeps): Promise<Gateway> {
   // ---- lỗi (SPEC-05 §10) ----
   app.setErrorHandler((err, req, reply) => {
     const { status, body } = mapError(err);
+    if (err instanceof PvError && err.code === 'RATE_LIMITED') void reply.header('Retry-After', String(typeof err.detail?.retryAfter === 'number' ? err.detail.retryAfter : 60));
     if (status >= 500) deps.logger.error('lỗi gateway', { url: req.url, err: err instanceof Error ? err.message : String(err) });
     void reply.code(status).send(body);
   });
@@ -106,9 +126,13 @@ export async function createGateway(deps: GatewayDeps): Promise<Gateway> {
   // ---- audit (SPEC-05 §9) ----
   app.addHook('onResponse', async (req, reply) => {
     const route = req.routeOptions?.url ?? req.url;
+    const viaToken = req.url.startsWith('/api/') || req.url.startsWith('/mcp');
     if (reply.statusCode === 401 || reply.statusCode === 403) {
-      deps.audit.append({ actorType: 'user', action: 'http.denied', detail: { method: req.method, route, status: reply.statusCode, reason: req.denyReason ?? 'unknown' } });
+      deps.audit.append({ actorType: viaToken ? 'client' : 'user', actorId: req.client?.id ?? null, action: 'http.denied', detail: { method: req.method, route, status: reply.statusCode, reason: req.denyReason ?? 'unknown' } });
       return;
+    }
+    if (isWriteMethod(req.method) && req.url.startsWith('/api/')) {
+      deps.audit.append({ actorType: 'client', actorId: req.client?.id ?? null, action: 'http.write', detail: { method: req.method, route, status: reply.statusCode } });
     }
     if (isWriteMethod(req.method) && req.url.startsWith('/internal')) {
       const params = (req.params ?? {}) as Record<string, string>;
@@ -120,6 +144,8 @@ export async function createGateway(deps: GatewayDeps): Promise<Gateway> {
   registerCoreRoutes(app, deps);
   registerOpsRoutes(app, deps);
   registerDashboardRoutes(app, deps);
+  registerApiV1Routes(app, deps);
+  app.route({ method: ['GET', 'POST', 'DELETE'], url: '/mcp', handler: (req, reply) => handleMcp(deps, req, reply) });
   const sse = registerSse(app, deps);
 
   // ---- SPA / trang tối thiểu (SPEC-05 §3) ----

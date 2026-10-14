@@ -2,7 +2,7 @@
   "name": "@sctech/profilevault-jobs",
   "version": "0.1.0",
   "private": true,
-  "description": "Job service (khung; SPEC-06, M1)",
+  "description": "Job service (SPEC-06, M1)",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -14,10 +14,19 @@
   },
   "scripts": {
     "build": "tsc -b",
-    "test": "vitest run --passWithNoTests"
+    "test": "vitest run"
   },
   "devDependencies": {
     "typescript": "~5.9.3",
-    "vitest": "^5.0.4"
+    "vitest": "^5.0.4",
+    "@sctech/profilevault-fury-client": "workspace:*",
+    "@sctech/profilevault-runner": "workspace:*"
+  },
+  "dependencies": {
+    "@sctech/profilevault-contract": "workspace:*",
+    "@sctech/profilevault-core": "workspace:*",
+    "@sctech/profilevault-db": "workspace:*",
+    "@sctech/profilevault-health": "workspace:*",
+    "zod": "^4.6.0"
   }
 }

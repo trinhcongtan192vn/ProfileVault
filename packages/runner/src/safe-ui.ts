@@ -1,14 +1,22 @@
 import { PvError } from '@sctech/profilevault-contract';
 import { realTimers, type Timers } from '@sctech/profilevault-fury-client';
 import type { Locator, Page } from 'playwright';
-import { readFileSync } from 'node:fs';
+import { createReadStream, readFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
+import { pipeline } from 'node:stream/promises';
 import { ForbiddenPatternsSchema } from '@sctech/profilevault-contract';
 const globalPatterns = ForbiddenPatternsSchema.parse(JSON.parse(readFileSync(new URL('../data/forbidden-global.json', import.meta.url), 'utf8')));
+
+async function sha256OfFile(file: string): Promise<string> {
+  const hash = createHash('sha256');
+  await pipeline(createReadStream(file), hash);
+  return hash.digest('hex');
+}
 
 export interface Expectation { visible?: Locator; urlMatches?: RegExp; valueEquals?: string }
 export class SafeUi {
   private readonly patterns: RegExp[];
-  constructor(private readonly d: { page: Page; sites: string[]; forbidden?: string[]; timers?: Timers; random?: () => number; actionDelayMs?: [number, number]; typingDelayMs?: [number, number]; verifiedFiles?: string[]; denied?: (detail: Record<string, unknown>) => void }) {
+  constructor(private readonly d: { page: Page; sites: string[]; forbidden?: string[]; timers?: Timers; random?: () => number; actionDelayMs?: [number, number]; typingDelayMs?: [number, number]; verifiedFiles?: Record<string, string>; sha256File?: (file: string) => Promise<string>; denied?: (detail: Record<string, unknown>) => void }) {
     this.patterns = [...globalPatterns, ...(d.forbidden ?? [])].map((p) => new RegExp(p, 'iu'));
   }
   assertUrl(url: string): void {
@@ -61,7 +69,12 @@ export class SafeUi {
     await this.delay(); await this.d.page.keyboard.press(key); this.checkCurrent();
   }
   async upload(target: Locator, filePath: string): Promise<void> {
-    this.checkCurrent(); if (!this.d.verifiedFiles?.includes(filePath)) throw new PvError('FILE_NOT_ALLOWED', 'File chưa được Job service xác minh');
+    this.checkCurrent();
+    const expected = this.d.verifiedFiles?.[filePath];
+    if (!expected) throw new PvError('FILE_NOT_ALLOWED', 'File chưa được Job service xác minh');
+    // Băm lại ngay trước khi upload (SPEC-06 §3): file đổi sau khi gửi job → FILE_CHANGED
+    const actual = await (this.d.sha256File ?? sha256OfFile)(filePath).catch(() => '');
+    if (actual.toLowerCase() !== expected.toLowerCase()) throw new PvError('FILE_CHANGED', 'File đổi sau khi gửi job', { path: filePath });
     await this.delay(); await target.setInputFiles(filePath);
   }
   async read(target: Locator): Promise<string> { this.checkCurrent(); return await target.textContent() ?? ''; }

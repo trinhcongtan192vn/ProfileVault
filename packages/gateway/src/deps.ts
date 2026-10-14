@@ -3,6 +3,7 @@ import type { EventBus, Logger, SecretStore } from '@sctech/profilevault-core';
 import type { AuditRepo, Database, SettingsRepo } from '@sctech/profilevault-db';
 import type { FuryClient, FuryStatusPoller, Timers } from '@sctech/profilevault-fury-client';
 import type { HealthService } from '@sctech/profilevault-health';
+import type { JobService } from '@sctech/profilevault-jobs';
 
 /** Phần Runner mà Gateway cần (SPEC-03 §9, SPEC-05 §7). Feature 007 cài; tới lúc đó dùng `NoRunner`. */
 export interface RunnerFacade {
@@ -86,6 +87,8 @@ export interface GatewayDeps {
   database: Database;
   paths: { probesDir: string };
   runner?: RunnerFacade;
+  /** Job service (SPEC-06): `/api/v1`, MCP, gửi job từ dashboard. */
+  jobs?: JobService;
   /** Bộ tự cài Fury (SPEC-00 §11.1); không có → `/internal/fury/install` báo `disabled`. */
   furyInstall?: { status(): FuryInstallStatus; ensure(): Promise<FuryInstallStatus> };
   /** File `api-token` của Fury (đọc khi chưa lưu token ở Cài đặt). */

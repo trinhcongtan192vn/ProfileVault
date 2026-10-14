@@ -15,3 +15,4 @@ export * from './consistency.js';
 export * from './internal-api.js';
 export * from './dashboard.js';
 export * from './flow.js';
+export * from './api-v1.js';

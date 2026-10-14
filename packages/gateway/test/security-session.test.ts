@@ -111,7 +111,7 @@ describe('phiên dashboard (SPEC-05 §4.1)', () => {
     const missing = await h.gw.app.inject({ method: 'GET', url: '/internal/nope', headers: { host, cookie } });
     expect(missing.statusCode).toBe(404);
     expect(missing.json()).toMatchObject({ error: { code: 'FLOW_NOT_FOUND' } });
-    expect(await h.gw.app.inject({ method: 'GET', url: '/api/v1/accounts', headers: { host, cookie } }).then((r) => r.statusCode)).toBe(404);
-    expect(await h.gw.app.inject({ method: 'POST', url: '/mcp', headers: { host, cookie } }).then((r) => r.statusCode)).toBe(404);
+    expect(await h.gw.app.inject({ method: 'GET', url: '/api/v1/accounts', headers: { host, cookie } }).then((r) => r.statusCode)).toBe(401); // M1: cần token client, cookie dashboard không dùng được
+    expect(await h.gw.app.inject({ method: 'POST', url: '/mcp', headers: { host, cookie } }).then((r) => r.statusCode)).toBe(401); // M1: MCP cần token client
   });
 });

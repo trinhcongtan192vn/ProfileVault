@@ -26,6 +26,8 @@ import {
 } from '@sctech/profilevault-contract';
 import { ClientsRepo, DetectSuiteRepo, stripHash } from '@sctech/profilevault-db';
 import type { FastifyInstance } from 'fastify';
+import { DASHBOARD_CLIENT } from '@sctech/profilevault-jobs';
+import { z } from 'zod';
 import { buildChart } from '../charts.js';
 import { createClient, revokeClient } from '../clients.js';
 import { exportDataset, toCsv } from '../csv.js';
@@ -33,6 +35,9 @@ import { NoRunner, type GatewayDeps } from '../deps.js';
 import { parse } from '../security.js';
 
 export const RUNNER_SETTING = 'runner';
+/** Trùng `P4_SETTING` của Runner (không import Runner vào gateway). */
+export const P4_SETTING = 'spike.p4Passed';
+const P4BodySchema = z.object({ passed: z.boolean() });
 
 /** Nhóm Job/run, Lịch, Cài đặt, Client, Biểu đồ, Xuất, Hệ thống (SPEC-05 §7). */
 export function registerOpsRoutes(app: FastifyInstance, deps: GatewayDeps): void {
@@ -67,6 +72,22 @@ export function registerOpsRoutes(app: FastifyInstance, deps: GatewayDeps): void
     const p = runner.artifactPath(id, name);
     if (!p || !existsSync(p)) throw new PvError('FILE_NOT_FOUND', 'Không có artifact này', { runId: id, name });
     return reply.header('content-disposition', `attachment; filename="${path.basename(p)}"`).send(await import('node:fs').then((fs) => fs.createReadStream(p)));
+  });
+
+  // ---- Gửi job từ dashboard (client đặc biệt `dashboard`, SPEC-06 §2) ----
+  app.post('/internal/jobs', async (req, reply) => {
+    if (!deps.jobs) throw new PvError('FLOW_DISABLED', 'Job service chưa sẵn sàng');
+    const { job, duplicate } = await deps.jobs.submit(req.body as never, DASHBOARD_CLIENT);
+    return reply.code(duplicate ? 200 : 201).send(job);
+  });
+
+  // ---- Spike P4: chỉ người xác nhận (mở khóa flow có chế độ L2/L3) ----
+  app.get('/internal/settings/p4', async () => ({ passed: deps.settings.get<boolean>(P4_SETTING) === true }));
+  app.put('/internal/settings/p4', async (req) => {
+    const { passed } = parse(P4BodySchema, req.body);
+    deps.settings.set(P4_SETTING, passed, 'user');
+    deps.audit.append({ actorType: 'user', action: 'spike.p4', detail: { passed } });
+    return { passed };
   });
 
   // ---- Lịch ----

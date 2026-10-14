@@ -1,4 +1,5 @@
-import { UndoEventParamsSchema, USER_CLEARABLE_PAUSE_REASONS, type InboxItem, type Overview, type OverviewRow } from '@sctech/profilevault-contract';
+import { UndoEventParamsSchema, USER_CLEARABLE_PAUSE_REASONS, type InboxItem, type Overview } from '@sctech/profilevault-contract';
+import { buildOverview } from '../overview.js';
 import { DetectSuiteRepo } from '@sctech/profilevault-db';
 import type { FastifyInstance } from 'fastify';
 import { NoRunner, type GatewayDeps } from '../deps.js';
@@ -11,28 +12,7 @@ export function registerDashboardRoutes(app: FastifyInstance, deps: GatewayDeps)
   const runner = deps.runner ?? new NoRunner();
   const detect = new DetectSuiteRepo(deps.database.db);
 
-  app.get('/internal/overview', async (): Promise<Overview> => {
-    const version = health.currentFuryVersion() ?? null;
-    const now = deps.clock.nowMs();
-    const rows: OverviewRow[] = [];
-    for (const b of health.listBindings()) {
-      const r = await health.evaluateReadiness(b.id);
-      const red = health.listEvents(b.id, { limit: 500 }).find((e) => e.severity === 'red');
-      const c = health.getConsistency(b.id);
-      const exit = health.listProxyChecks(b.id, 20).find((p) => p.ok);
-      rows.push({
-        binding: b,
-        daysAtLevel: Math.floor((now - Date.parse(b.levelSince)) / 86_400_000),
-        readiness: { nextLevel: r.nextLevel, progress: r.progress, canPromote: r.canPromote, missing: r.conditions.filter((x) => !x.met).map((x) => x.condition.kind) },
-        openPauses: r.openPauses,
-        lastRed: red ? { type: red.type, at: red.occurredAt } : null,
-        consistency: c ? { passed: c.score.passed, total: c.score.total, blockFailing: c.score.blockFailing, blockUnknown: c.score.blockUnknown, at: c.finishedAt } : null,
-        exit: exit ? { country: exit.country, asn: exit.asn, ip: exit.exitIp, checkedAt: exit.checkedAt } : null,
-        fury: { version, detectSuitePassed: version ? detect.hasPassed(version, b.id) : false },
-      });
-    }
-    return { rows, timezone: deps.config.ui.timezone, now: deps.clock.nowIso() };
-  });
+  app.get('/internal/overview', async (): Promise<Overview> => buildOverview(deps, detect));
 
   app.get('/internal/inbox', async (): Promise<{ items: InboxItem[] }> => {
     const items: InboxItem[] = [];

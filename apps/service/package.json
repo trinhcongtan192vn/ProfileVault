@@ -19,6 +19,7 @@
     "@sctech/profilevault-gateway": "workspace:*",
     "@sctech/profilevault-health": "workspace:*",
     "@sctech/profilevault-host-info": "workspace:*",
+    "@sctech/profilevault-jobs": "workspace:*",
     "@sctech/profilevault-pack-generic": "workspace:*",
     "@sctech/profilevault-pack-youtube": "workspace:*",
     "@sctech/profilevault-runner": "workspace:*",
@@ -26,6 +27,7 @@
     "systray2": "^2.1.4"
   },
   "devDependencies": {
+    "@modelcontextprotocol/sdk": "1.32.1",
     "@types/node-notifier": "^8.0.5",
     "tsx": "^4.20.0",
     "typescript": "~5.9.3",
