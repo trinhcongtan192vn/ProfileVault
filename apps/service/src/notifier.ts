@@ -1,13 +1,18 @@
 import nodeNotifier from 'node-notifier';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import type { AutomationLevel, Clock, Config } from '@sctech/profilevault-contract';
 import type { EventBus } from '@sctech/profilevault-core';
 import { fromLocal, localDateKey, localParts, type HealthService } from '@sctech/profilevault-health';
 
 export interface Notification { title: string; message: string; path: string }
 export type Notify = (notification: Notification) => void;
+/** Logo cho toast: assets/profilevault.png ở gốc repo (cả khi chạy từ src/ lẫn dist/). */
+const TOAST_ICON = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..', '..', 'assets', 'profilevault.png');
+
 export function windowsNotify(openUrl: (path: string) => string, open: (url: string) => void): Notify {
   return (n) => {
-    nodeNotifier.notify({ title: n.title, message: n.message, wait: true }, (err, response, metadata) => {
+    nodeNotifier.notify({ title: n.title, message: n.message, icon: TOAST_ICON, wait: true }, (err, response, metadata) => {
       if (!err && (response === 'activate' || metadata?.activationType === 'contentsClicked')) open(openUrl(n.path));
     });
   };
