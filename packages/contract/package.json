@@ -1,7 +1,7 @@
 {
   "name": "@sctech/profilevault-contract",
   "version": "0.1.0",
-  "description": "ProfileVault contract: Zod schema, mã lỗi, ID, cấu hình, sự kiện (profilevault/v1)",
+  "description": "ProfileVault contract: Zod schema, mã lỗi, ID, cấu hình, sự kiện, Integration API profilevault/v1, client mẫu, server giả lập và contract test",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -9,9 +9,15 @@
     ".": {
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
+    },
+    "./testing": {
+      "types": "./dist/testing/index.d.ts",
+      "default": "./dist/testing/index.js"
     }
   },
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build": "tsc -b",
     "test": "vitest run"
@@ -22,5 +28,13 @@
   "devDependencies": {
     "typescript": "~5.9.3",
     "vitest": "^5.0.4"
+  },
+  "peerDependencies": {
+    "vitest": "^5.0.4"
+  },
+  "peerDependenciesMeta": {
+    "vitest": {
+      "optional": true
+    }
   }
 }

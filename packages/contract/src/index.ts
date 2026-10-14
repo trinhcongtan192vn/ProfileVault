@@ -16,3 +16,4 @@ export * from './internal-api.js';
 export * from './dashboard.js';
 export * from './flow.js';
 export * from './api-v1.js';
+export * from './client.js';
