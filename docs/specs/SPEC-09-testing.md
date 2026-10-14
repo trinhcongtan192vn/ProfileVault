@@ -35,7 +35,7 @@ Health service và Scheduler nhận `Clock` qua DI; test dùng đồng hồ gi�
 `packs/<pack>/flows/<flow>/test/fixtures/*.html`: tái hiện cấu trúc ngữ nghĩa (role, accessible name) của các màn hình cần thiết, có biến thể: đăng xuất, challenge, sai kênh, phần tử bị đổi tên (để kiểm `SITE_CHANGED`), nút "Publish" (để kiểm `FORBIDDEN_ACTION`). Fixture cập nhật khi locator đổi.
 
 ### 3.4 Probe mẫu
-`packages/health/test/probes/`: file capture thật lấy ở **[SPIKE-P3]** (đã xóa thông tin định danh), cộng biến thể: múi giờ lệch, WebRTC lộ IP, voices macOS, hash đổi cùng phiên bản, nâng Fury chỉ đổi phiên bản, nâng Fury đổi thêm GPU.
+`packages/health/test/probes/`: `fury-detect-suite.json` theo đúng cấu trúc `probe.js` của Fury 0.3.22 (IP thử nghiệm RFC 5737; thay bằng capture thật đã xóa định danh khi người vận hành chạy P3 trên profile test), cộng biến thể: múi giờ lệch, WebRTC lộ IP, voices macOS, hash đổi cùng phiên bản, nâng Fury chỉ đổi phiên bản, nâng Fury đổi thêm GPU.
 
 ## 4. Live test
 

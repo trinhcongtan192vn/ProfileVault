@@ -22,16 +22,16 @@ function stripUndefined(v: unknown): unknown {
 
 /**
  * Chuẩn hóa file probe (SPEC-02 §6.3). Thiếu trường bắt buộc → `INPUT_INVALID` với `detail.missing`.
- * `converters` tiêm được (TODO(SPIKE-P3)).
+ * `converters` tiêm được. `furyVersion`: phiên bản Fury lúc nhập (file probe của Fury không ghi).
  */
-export function parseFuryCapture(raw: unknown, opts: { now?: string; converters?: ProbeConverter[] } = {}): { probe: NormalizedProbe; converter: string } {
+export function parseFuryCapture(raw: unknown, opts: { now?: string; furyVersion?: string; converters?: ProbeConverter[] } = {}): { probe: NormalizedProbe; converter: string } {
   const now = opts.now ?? new Date().toISOString();
   const converters = opts.converters ?? DEFAULT_PROBE_CONVERTERS;
   const converter = converters.find((c) => c.detect(raw));
   if (!converter) {
     throw new PvError('INPUT_INVALID', 'Không nhận dạng được định dạng file probe', { reason: 'probe_format_unknown', converters: converters.map((c) => c.id) });
   }
-  const candidate = stripUndefined(converter.convert(raw, { now }));
+  const candidate = stripUndefined(converter.convert(raw, { now, ...(opts.furyVersion ? { furyVersion: opts.furyVersion } : {}) }));
   const missing = PROBE_REQUIRED_PATHS.filter((p) => {
     const v = getPath(candidate, p);
     return v === undefined || v === null || (Array.isArray(v) && v.length === 0 && p === 'navigator.languages');

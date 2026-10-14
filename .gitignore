@@ -19,7 +19,9 @@ secrets.bin
 *.db-wal
 *.db-shm
 runs/
+!packages/**/test/**/runs/
 probes/
+!packages/health/test/probes/
 **/.pv-data/
 test-results/
 playwright-report/

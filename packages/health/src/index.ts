@@ -10,7 +10,7 @@ export { ConsistencySchedule, CONSISTENCY_SETTING, NEXT_PERIODIC_SETTING, HOST_L
 export { ChecklistService, normalizeEmail, normalizePhone, hmacHex, toStatus, type ChecklistDeps } from './checklist.js';
 export { HostService, type HostCapture } from './host.js';
 export { parseFuryCapture } from './probe/normalize.js';
-export { DEFAULT_PROBE_CONVERTERS, normalizedProbeConverter, furyCaptureV1Converter, type ProbeConverter } from './probe/converters.js';
+export { DEFAULT_PROBE_CONVERTERS, furyDetectSuiteConverter, normalizedProbeConverter, type ProbeConvertContext, type ProbeConverter } from './probe/converters.js';
 export { probeDiff, isAllowedVersionChange, userAgentOnlyVersionChanged, ALLOWED_VERSION_CHANGE_PATHS, type ProbeChange } from './probe/diff.js';
 export { importProbeFile, type ProbeImportDeps, type ProbeSource } from './probe/import.js';
 export * from './rules/index.js';

@@ -10,6 +10,8 @@ export interface ProbeImportDeps {
   clock: Clock;
   probesDir: string;
   converters?: ProbeConverter[];
+  /** Phiên bản Fury hiện tại (file probe của Fury không ghi phiên bản). */
+  furyVersion?: () => string | undefined;
 }
 
 export type ProbeSource = { filePath: string } | { raw: object };
@@ -30,7 +32,8 @@ export function importProbeFile(d: ProbeImportDeps, bindingId: string, from: Pro
     raw = from.raw;
   }
   const now = d.clock.nowIso();
-  const { probe } = parseFuryCapture(raw, { now, converters: d.converters });
+  const furyVersion = d.furyVersion?.();
+  const { probe } = parseFuryCapture(raw, { now, converters: d.converters, ...(furyVersion ? { furyVersion } : {}) });
   const id = newId('probe', d.clock.nowMs());
   mkdirSync(d.probesDir, { recursive: true });
   const rawPath = path.join(d.probesDir, `${id}.json`);

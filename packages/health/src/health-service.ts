@@ -153,6 +153,8 @@ export interface HealthDeps {
   /** Hàm chụp host (host-info); mặc định trả snapshot tối thiểu từ `os`. */
   captureHost?: HostCapture;
   probeConverters?: ProbeConverter[];
+  /** Phiên bản Fury từ poller khi Health chưa ghi `fury.version_changed` (lần đầu chạy). */
+  currentFuryVersion?: () => string | undefined;
   schedulerSeed?: number;
   /** Fury có đang reachable không (từ poller); mặc định theo `fury.status_changed`. */
   isFuryReachable?: () => boolean;
@@ -602,7 +604,7 @@ export function createHealth(d: HealthDeps): HealthBundle {
       const b = mustGet(bindingId);
       if (b.archivedAt) throw new PvError('INPUT_INVALID', 'Binding đã lưu trữ', { bindingId });
       const { result, bus } = policy.transact(() => {
-        const pr = importProbeFile({ repo: repos.probes, clock: d.clock, probesDir: d.probesDir, converters: d.probeConverters }, b.id, from, source);
+        const pr = importProbeFile({ repo: repos.probes, clock: d.clock, probesDir: d.probesDir, converters: d.probeConverters, furyVersion: () => policy.currentFuryVersion() ?? d.currentFuryVersion?.() }, b.id, from, source);
         policy.recordEvent(b.id, 'probe.imported', { probeId: pr.id, furyVersion: pr.furyVersion, source });
         d.audit.append({ actorType: actor === 'user' ? 'user' : 'client', action: 'probe.import', targetType: 'binding', targetId: b.id, detail: { probeId: pr.id, furyVersion: pr.furyVersion, source } });
         return pr;

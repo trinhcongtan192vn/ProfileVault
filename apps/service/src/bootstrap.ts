@@ -177,6 +177,7 @@ export async function bootstrap(opts: BootstrapOptions = {}): Promise<ServiceCon
       probesDir: paths.probesDir,
       captureHost: () => captureHostSnapshot({ now: () => clock.nowIso() }),
       isFuryReachable: () => pollerRef.lastHealth?.reachable ?? false,
+      currentFuryVersion: () => pollerRef.lastHealth?.version,
     });
     healthRef.current = healthBundle.health;
 

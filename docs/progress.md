@@ -45,7 +45,7 @@ Ký hiệu: ⏳ chưa làm · 🔄 đang làm · ✅ xong · ⚠️ xong có ghi
 | # | Câu hỏi | Liên quan | Trạng thái |
 |---|---|---|---|
 | Q1 | Định dạng thật của Automation API Fury (endpoint, JSON) | SPEC-01 §4, SPIKE-P2 | **Đã trả lời** (P2, 2026-10-14): SPEC-01 §4 |
-| Q2 | Định dạng file probe của Fury | SPEC-02 §6.3, SPIKE-P3 | Chờ spike P3; `parseFuryCapture` có `TODO(SPIKE-P3)` |
+| Q2 | Định dạng file probe của Fury | SPEC-02 §6.3, SPIKE-P3 | **Đã trả lời** từ mã nguồn `probe.js` (2026-10-15); còn kiểm capture thật |
 | Q3 | Fury có kiểm exit proxy không mở trình duyệt và phân loại ASN không | SPEC-01 §4, SPIKE-P5 | Chờ spike P5; mặc định `asnType = unknown` + `asn_attestations` |
 | Q4 | Đọc GPU/màn hình trên Windows không cần admin | SPIKE-P6 | **Đã trả lời 2026-10-14:** đọc được, ~170 ms, không cần admin; VRAM không đáng tin (trần 4 GB) — xem SPIKE-bao-cao |
 | Q5 | Yêu cầu triển khai ghi "21 luật" nhưng SPEC-02 §6.4 liệt kê 22 (A1–A6, B1–B4, C1–C3, D1–D5, E1–E4) | SPEC-02 §6.4 | Đã cài 22; người duyệt xác nhận |
@@ -73,7 +73,7 @@ Những điểm `docs/` không trả lời; đã chọn phương án nhất quá
 | G16 | Số liệu run cho ngưỡng (`flow_success_rate`, `l2_correct_rate`, `event_count_by_mode`, `no_open_site_changed`) tính từ `health_events` do `recordRunOutcome` ghi, không đọc bảng `runs` | 003 | Health độc lập với Runner |
 | G17 | Phiên bản Fury hiện tại lưu `settings['fury.currentVersion']` do poller cập nhật; chưa biết → `detect_suite_pass` chưa đạt | 003 | SPEC-02 không nói nguồn "phiên bản hiện tại" |
 | G18 | Lịch kiểm proxy: RNG seed, giờ địa phương bằng `Intl` theo `config.ui.timezone`; lượt lỡ khi tắt tiến trình không chạy bù | 003 | SPEC-02 §7 chỉ nêu 4 khung giờ |
-| G19 | Probe: `parseFuryCapture` thử các bộ chuyển đổi; bộ `furyCaptureV1` là giả định `TODO(SPIKE-P3)`; test dùng probe giả dạng chuẩn hóa | 004 | SPIKE-P3 chưa chạy |
+| G19 | Probe: `parseFuryCapture` thử các bộ chuyển đổi; bộ giả định `furyCaptureV1` đã thay bằng `furyDetectSuiteConverter` theo mã nguồn Fury | 004 | SPIKE-P3 (2026-10-15) |
 | G20 | host-info: PowerShell CIM + `System.Windows.Forms.Screen`, timeout 3 s, lỗi → mảng rỗng và luật B2/B3 `unknown` | 004 | SPIKE-P6 đã xác minh 2026-10-14 |
 | G21 | A4: `geolocation` `off`/`auto` → pass; `manual` cần tọa độ exit từ `city-coords.json`, thiếu → `unknown` | 004 | `ExitInfo` không có lat/lon |
 | G22 | A2: múi giờ → quốc gia bằng `timezone-countries.json`; không có → `unknown` | 004 | SPEC-02 không nêu nguồn ánh xạ |
@@ -102,10 +102,6 @@ Cập nhật sau mỗi feature (lệnh: `grep -rn --exclude-dir=dist "TODO(SPIKE
 | Spike | File | Nội dung |
 |---|---|---|
 | SPIKE-P5 | `packages/fury-client/src/adapter/endpoint-map.ts` | `checkExit: { source: 'missing' }` — API công khai không có kiểm exit; `meta.asnType` |
-| SPIKE-P3 | `packages/health/src/probe/converters.ts:3` | * TODO(SPIKE-P3): định dạng xuất thật của trang probe Fury chưa biết; `furyCaptureV1Converter` là giả định. |
-| SPIKE-P3 | `packages/health/src/probe/converters.ts:31` | * TODO(SPIKE-P3): giả định trang probe Fury xuất `{ meta: { furyVersion, capturedAt }, fingerprint: { ... } }` |
-| SPIKE-P3 | `packages/health/src/probe/normalize.ts:25` | * `converters` tiêm được (TODO(SPIKE-P3)). |
-| SPIKE-P3 | `packages/health/test/probe.test.ts:13` | describe('chuẩn hóa probe (SPEC-02 §6.3, TODO(SPIKE-P3))', () => { |
 
 ## 6. Thay đổi với `docs/`
 

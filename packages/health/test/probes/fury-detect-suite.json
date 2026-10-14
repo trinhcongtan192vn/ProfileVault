@@ -1,0 +1,127 @@
+{
+  "__schema": 1,
+  "__probeVersion": "0.3.0",
+  "__collectedInMs": 4210,
+  "navigator": {
+    "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/155.0.0.0 Safari/537.36",
+    "appVersion": "5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/155.0.0.0 Safari/537.36",
+    "appName": "Netscape",
+    "platform": "Win32",
+    "vendor": "Google Inc.",
+    "oscpu": "<absent>",
+    "product": "Gecko",
+    "productSub": "20030107",
+    "language": "de-DE",
+    "languages": "de-DE,de,en-US,en",
+    "hardwareConcurrency": 8,
+    "deviceMemory": 8,
+    "maxTouchPoints": 0,
+    "cookieEnabled": true,
+    "doNotTrack": null,
+    "pdfViewerEnabled": true,
+    "webdriver": false,
+    "onLine": true,
+    "pluginCount": 5,
+    "hasGpu": true
+  },
+  "clientHints": {
+    "brands": "Google Chrome/155,Not.A/Brand/99,Chromium/155",
+    "mobile": false,
+    "platform": "Windows",
+    "architecture": "x86",
+    "bitness": "64",
+    "model": "",
+    "platformVersion": "15.0.0",
+    "uaFullVersion": "155.0.8059.39",
+    "fullVersionList": "Google Chrome/155.0.8059.39,Not.A/Brand/99.0.0.0,Chromium/155.0.8059.39",
+    "wow64": false,
+    "formFactors": "Desktop"
+  },
+  "motion": { "__absent": true },
+  "screen": {
+    "width": 1920,
+    "height": 1080,
+    "availWidth": 1920,
+    "availHeight": 1032,
+    "availLeft": 0,
+    "availTop": 0,
+    "colorDepth": 24,
+    "pixelDepth": 24,
+    "orientationType": "landscape-primary",
+    "orientationAngle": 0,
+    "devicePixelRatio": 1,
+    "innerWidth": 1280,
+    "innerHeight": 720,
+    "outerWidth": 1296,
+    "outerHeight": 816,
+    "scrollbarWidth": 15
+  },
+  "canvas2d": {
+    "toDataURL": "1a2b3c4d",
+    "getImageData": "c0ffee01",
+    "getImageDataBytes": 160000,
+    "stableAcrossCalls": true,
+    "isPointInPath": true
+  },
+  "webgl": {
+    "webgl1": {
+      "unmasked": { "vendor": "Google Inc. (NVIDIA)", "renderer": "ANGLE (NVIDIA, NVIDIA GeForce RTX 4060 (0x00002882) Direct3D11 vs_5_0 ps_5_0, D3D11)" },
+      "render": { "readPixels": "beefcafe", "stableAcrossCalls": true },
+      "extensions": "ANGLE_instanced_arrays,EXT_blend_minmax"
+    },
+    "webgl2": {
+      "unmasked": { "vendor": "Google Inc. (NVIDIA)", "renderer": "ANGLE (NVIDIA, NVIDIA GeForce RTX 4060 (0x00002882) Direct3D11 vs_5_0 ps_5_0, D3D11)" },
+      "render": { "readPixels": "beefcafe", "stableAcrossCalls": true }
+    }
+  },
+  "webgpu": { "__noAdapter": true },
+  "audio": {
+    "context": { "sampleRate": 48000 },
+    "offline": { "sum": 124.04347527516074, "hash": "a0d10001" },
+    "stableAcrossCalls": true
+  },
+  "fonts": {
+    "detectedByMeasurement": ["Arial", "Calibri", "Cambria", "Consolas", "Segoe UI", "Tahoma", "Times New Roman"],
+    "countByMeasurement": 7,
+    "widthsHash": "f0f0f0f0",
+    "hasQueryLocalFonts": true,
+    "localFontsPermission": null
+  },
+  "webrtc": {
+    "completed": true,
+    "candidateCount": 2,
+    "types": "host,srflx",
+    "addresses": ["c1d2e3f4-0000-4000-8000-000000000000.local", "198.51.100.23"],
+    "usesMdns": true,
+    "raw": "0badf00d"
+  },
+  "locale": {
+    "timezone": "Europe/Berlin",
+    "timezoneOffset": -120,
+    "locale": "de-DE",
+    "calendar": "gregory",
+    "numberingSystem": "latn"
+  },
+  "permissions": {
+    "geolocation": "prompt",
+    "notifications": "prompt",
+    "__notificationApi": "default",
+    "__consistent": true
+  },
+  "speech": {
+    "count": 2,
+    "names": "Google Deutsch|de-DE|false~Microsoft Hedda - German (Germany)|de-DE|true",
+    "hash": "5eec0001",
+    "defaultVoice": "Microsoft Hedda - German (Germany)"
+  },
+  "storage": { "quota": 296630877388, "usage": 0 },
+  "engine": { "misc": {} },
+  "crossContext": {
+    "contextsProbed": ["main", "worker", "iframe:same-origin"],
+    "disagreementCount": 0,
+    "disagreements": [],
+    "absences": [],
+    "consistent": true
+  },
+  "contexts": {}
+}

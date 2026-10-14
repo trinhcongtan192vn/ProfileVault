@@ -1,0 +1,83 @@
+{
+  "furyVersion": "0.2.23",
+  "capturedAt": "2026-10-14T02:00:00.000Z",
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.6723.70 Safari/537.36",
+  "uaData": {
+    "platform": "Windows",
+    "platformVersion": "15.0.0",
+    "brands": [
+      {
+        "brand": "Chromium",
+        "version": "130"
+      },
+      {
+        "brand": "Google Chrome",
+        "version": "130"
+      }
+    ],
+    "fullVersionList": [
+      {
+        "brand": "Chromium",
+        "version": "130.0.6723.70"
+      }
+    ],
+    "architecture": "x86",
+    "bitness": "64"
+  },
+  "navigator": {
+    "platform": "Win32",
+    "languages": [
+      "de-DE",
+      "de",
+      "en"
+    ],
+    "hardwareConcurrency": 8,
+    "deviceMemory": 8,
+    "maxTouchPoints": 0,
+    "webdriver": false
+  },
+  "screen": {
+    "width": 1920,
+    "height": 1080,
+    "availWidth": 1920,
+    "availHeight": 1040,
+    "colorDepth": 24,
+    "dpr": 1
+  },
+  "window": {
+    "innerWidth": 1536,
+    "innerHeight": 864
+  },
+  "timezone": "Europe/Berlin",
+  "geolocationPermission": "prompt",
+  "webgl": {
+    "vendor": "Google Inc. (NVIDIA)",
+    "renderer": "ANGLE (NVIDIA, NVIDIA GeForce RTX 3060 Direct3D11 vs_5_0 ps_5_0, D3D11)"
+  },
+  "hashes": {
+    "canvas": "c1a2",
+    "webgl": "w3b4",
+    "audio": "a5c6"
+  },
+  "voices": [
+    "Alex",
+    "Samantha",
+    "Microsoft David - English (United States)"
+  ],
+  "fonts": [
+    "Segoe UI",
+    "Calibri",
+    "Arial",
+    "Consolas"
+  ],
+  "webrtc": {
+    "candidateIps": [
+      "5.6.7.8",
+      "192.168.1.10"
+    ]
+  },
+  "dns": {
+    "resolverCountry": "DE"
+  },
+  "contextsConsistent": true
+}

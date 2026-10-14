@@ -163,7 +163,9 @@ Severity thực tế = `consistency_rules.severity` (người vận hành chỉn
 | `checklist` | `account_checklists` | |
 | `allBindings` | Mọi binding chưa archive kèm `exit`, `furyProfile`, `checklist` của từng cái | |
 
-### 6.3 Probe chuẩn hóa (`NormalizedProbe`) **[SPIKE-P3]**
+### 6.3 Probe chuẩn hóa (`NormalizedProbe`) (định dạng nguồn đã xác minh SPIKE-P3 từ mã nguồn)
+
+Nguồn: trang probe detect-suite của Fury (`tools/detect-suite/probe.js`, `__schema: 1`), mở từ trang khởi đầu của profile (relay loopback `http://127.0.0.1:<relay_port>/<token>/probe/`), nút "Скачать JSON" xuất nguyên đối tượng `furyProbe()`. Ánh xạ (`furyDetectSuiteConverter`): `navigator.*` (`languages` là chuỗi ngăn bởi dấu phẩy), `clientHints` → `uaData` (`brands` dạng "Brand/ver,…"), `screen.*` + `innerWidth/innerHeight` → `window`, `locale.timezone`, `permissions.geolocation`, `webgl.webgl1|2.unmasked` → `webgl`, hash: `canvas2d.getImageData`, `webgl.*.render.readPixels`, `audio.offline.hash`; `speech.names` ("tên|lang|local~…") → `voices`; `fonts.detectedByMeasurement`; `webrtc.addresses` bỏ tên mDNS `*.local` (bản tải từ trang host công khai có `redacted: true` → bỏ hết); `crossContext.consistent`. File **không** có phiên bản Fury và thời điểm đo: `furyVersion` lấy phiên bản Fury đang chạy lúc nhập (Fury offline → `INPUT_INVALID` thiếu `furyVersion`), `capturedAt` = lúc nhập. Không có `dns`. Vector lỗi/vắng (`{ __error }`, `{ __absent }`) coi như không có.
 
 ```ts
 type NormalizedProbe = {
