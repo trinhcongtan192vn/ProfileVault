@@ -1,0 +1,36 @@
+# Node
+node_modules/
+dist/
+build/
+coverage/
+*.tsbuildinfo
+.turbo/
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# Môi trường
+.env
+.env.*
+
+# Dữ liệu chạy của ProfileVault (không bao giờ commit)
+secrets.bin
+*.db
+*.db-wal
+*.db-shm
+runs/
+probes/
+**/.pv-data/
+test-results/
+playwright-report/
+
+# Spec Kit (trạng thái cục bộ)
+.specify/feature.json
+
+# IDE / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+*.tmp
+*.swp
