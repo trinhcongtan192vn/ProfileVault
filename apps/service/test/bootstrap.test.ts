@@ -21,24 +21,25 @@ describe('bootstrap (spec 001 US5)', () => {
     const env = { PV_APPDATA_DIR: tmp(), PV_LOCALAPPDATA_DIR: tmp() };
     const secrets = new MemorySecretStore();
     const clock = new FakeClock('2026-10-14T01:00:00.000Z');
-    const seeders = new SeederRegistry().register('thresholds', (ctx) => ctx.settings.set('thresholds', { L0_to_L1: [] }, 'system'));
+    const seeders = new SeederRegistry().register('custom', (ctx) => ctx.settings.set('custom', { x: 1 }, 'system'));
 
-    const ctx = await bootstrap({ env, secretStore: secrets, clock, seeders, pidAlive: () => true });
+    const ctx = await bootstrap({ env, secretStore: secrets, clock, seeders, pidAlive: () => true, startBackground: false });
     expect(ctx.firstRun).toBe(true);
-    expect(ctx.seeded).toEqual(['thresholds']);
+    expect(ctx.seeded.sort()).toEqual(['custom', 'thresholds']);
+    expect(ctx.health.getThresholds().L0_to_L1).toHaveLength(7);
     for (const d of [ctx.paths.extensionsDir, ctx.paths.runsDir, ctx.paths.probesDir, ctx.paths.logsDir]) expect(existsSync(d)).toBe(true);
     expect(Buffer.from((await secrets.get('hmac.key')) ?? '', 'base64')).toHaveLength(32);
     expect(existsSync(ctx.paths.dbFile)).toBe(true);
     expect(ctx.settings.get('schema_version')).toEqual({ migration: 1 });
     expect(ctx.settings.get('runner')).toMatchObject({ traceAlways: false });
-    expect(ctx.settings.get('thresholds')).toEqual({ L0_to_L1: [] });
+    expect(ctx.settings.get('custom')).toEqual({ x: 1 });
     expect(ctx.audit.list({ action: 'system.first_run' })).toHaveLength(1);
     expect(ctx.audit.list({ action: 'system.started' })).toHaveLength(1);
     expect(existsSync(ctx.paths.lockFile)).toBe(true);
     expect(readdirSync(ctx.paths.logsDir)).toEqual(['service-2026-10-14.log']);
 
     // đang giữ khóa → tiến trình khác bị từ chối
-    await expect(bootstrap({ env, secretStore: secrets, clock, pidAlive: () => true, pid: process.pid + 1 })).rejects.toThrow(InstanceAlreadyRunningError);
+    await expect(bootstrap({ env, secretStore: secrets, clock, pidAlive: () => true, pid: process.pid + 1, startBackground: false })).rejects.toThrow(InstanceAlreadyRunningError);
 
     await ctx.shutdown();
     expect(existsSync(ctx.paths.lockFile)).toBe(false);
@@ -46,7 +47,7 @@ describe('bootstrap (spec 001 US5)', () => {
 
     clock.advance(5000);
     const hmacBefore = await secrets.get('hmac.key');
-    const ctx2 = await bootstrap({ env, secretStore: secrets, clock, seeders, pidAlive: () => true });
+    const ctx2 = await bootstrap({ env, secretStore: secrets, clock, seeders, pidAlive: () => true, startBackground: false });
     expect(ctx2.firstRun).toBe(false);
     expect(ctx2.seeded).toEqual([]);
     expect(await secrets.get('hmac.key')).toBe(hmacBefore);
@@ -61,14 +62,14 @@ describe('bootstrap (spec 001 US5)', () => {
     const { writeFileSync, mkdirSync } = await import('node:fs');
     mkdirSync(env.PV_APPDATA_DIR, { recursive: true });
     writeFileSync(path.join(env.PV_APPDATA_DIR, 'config.json'), '{ broken');
-    await expect(bootstrap({ env, secretStore: new MemorySecretStore(), pidAlive: () => true })).rejects.toThrow(/config.json hỏng/);
+    await expect(bootstrap({ env, secretStore: new MemorySecretStore(), pidAlive: () => true, startBackground: false })).rejects.toThrow(/config.json hỏng/);
     expect(existsSync(path.join(env.PV_APPDATA_DIR, 'service.lock'))).toBe(false);
   });
 
   it('log không chứa bí mật', async () => {
     const env = { PV_APPDATA_DIR: tmp(), PV_LOCALAPPDATA_DIR: tmp() };
     const secrets = new MemorySecretStore({ 'fury.token': 'fury-token-value-123' });
-    const ctx = await bootstrap({ env, secretStore: secrets, pidAlive: () => true });
+    const ctx = await bootstrap({ env, secretStore: secrets, pidAlive: () => true, startBackground: false });
     ctx.logger.info('token test', { token: 'fury-token-value-123' });
     await ctx.shutdown();
     const { readFileSync } = await import('node:fs');

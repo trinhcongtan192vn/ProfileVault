@@ -175,7 +175,7 @@ type PauseReason = 'red_event' | 'proxy_changed' | 'detect_suite_failed'
 | `fury.version_changed` | fury | warn | Phát hiện phiên bản Fury mới |
 | `proxy.country_changed` / `proxy.asn_changed` | proxy_check | red | |
 | `proxy.check_failed` | proxy_check | warn | |
-| `session_check.ok` | session_check | info | |
+| `session_check.ok` | session_check | info / warn | `warn` khi `studioLanguageOk = false` (SPEC-04 §4) |
 | `session_check.logged_out` | session_check | red | |
 | `session_check.wrong_account` | session_check | red | |
 | `session_check.failed` | session_check | warn | Lỗi kỹ thuật, không phải tín hiệu tài khoản |

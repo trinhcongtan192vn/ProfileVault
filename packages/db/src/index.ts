@@ -14,3 +14,9 @@ export { SettingsRepo, type SettingsHistoryRow } from './repositories/settings.j
 export { AuditRepo, type AuditAppendInput, type AuditListFilter, type AuditRow } from './repositories/audit.js';
 export { pruneAppendOnly, type PruneOptions, type PruneResult } from './prune.js';
 export { openTestDatabase, type TestDatabase } from './test-utils.js';
+export { BindingsRepo } from './repositories/bindings.js';
+export { HealthEventsRepo, type HealthEventFilter } from './repositories/health-events.js';
+export { PausesRepo } from './repositories/pauses.js';
+export { LevelChangesRepo } from './repositories/level-changes.js';
+export { ProxyChecksRepo } from './repositories/proxy-checks.js';
+export { DetectSuiteRepo, type DetectSuiteRow } from './repositories/detect-suite.js';

@@ -1,8 +1,7 @@
 {
   "name": "@sctech/profilevault-health",
   "version": "0.1.0",
-  "private": true,
-  "description": "Health service (khung; SPEC-02 ở feature 003/004)",
+  "description": "ProfileVault Health service: mức tự động hóa, ngưỡng, hạ mức, kiểm proxy, kiểm tra nhất quán (SPEC-02)",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -12,9 +11,17 @@
       "default": "./dist/index.js"
     }
   },
+  "files": ["dist"],
   "scripts": {
     "build": "tsc -b",
-    "test": "vitest run --passWithNoTests"
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@sctech/profilevault-contract": "workspace:*",
+    "@sctech/profilevault-core": "workspace:*",
+    "@sctech/profilevault-db": "workspace:*",
+    "@sctech/profilevault-fury-client": "workspace:*",
+    "zod": "^4.6.0"
   },
   "devDependencies": {
     "typescript": "~5.9.3",

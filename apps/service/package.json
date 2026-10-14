@@ -14,7 +14,9 @@
   "dependencies": {
     "@sctech/profilevault-contract": "workspace:*",
     "@sctech/profilevault-core": "workspace:*",
-    "@sctech/profilevault-db": "workspace:*"
+    "@sctech/profilevault-db": "workspace:*",
+    "@sctech/profilevault-fury-client": "workspace:*",
+    "@sctech/profilevault-health": "workspace:*"
   },
   "devDependencies": {
     "tsx": "^4.20.0",

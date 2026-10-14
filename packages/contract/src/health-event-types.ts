@@ -21,7 +21,7 @@ export const HEALTH_EVENT_TYPES = {
   'proxy.country_changed': { source: 'proxy_check', severity: 'red' },
   'proxy.asn_changed': { source: 'proxy_check', severity: 'red' },
   'proxy.check_failed': { source: 'proxy_check', severity: 'warn' },
-  'session_check.ok': { source: 'session_check', severity: 'info' },
+  'session_check.ok': { source: 'session_check', severity: ['info', 'warn'] }, // warn khi studioLanguageOk=false (SPEC-04 §4)
   'session_check.logged_out': { source: 'session_check', severity: 'red' },
   'session_check.wrong_account': { source: 'session_check', severity: 'red' },
   'session_check.failed': { source: 'session_check', severity: 'warn' },

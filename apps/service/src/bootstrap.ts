@@ -1,4 +1,4 @@
-import { systemClock, type Clock, type Config } from '@sctech/profilevault-contract';
+import { PvError, systemClock, type Clock, type Config } from '@sctech/profilevault-contract';
 import {
   acquireInstanceLock,
   createLogger,
@@ -15,7 +15,8 @@ import {
   type SecretStore,
 } from '@sctech/profilevault-core';
 import { AuditRepo, openDatabase, SettingsRepo, type Database } from '@sctech/profilevault-db';
-import { PvError } from '@sctech/profilevault-contract';
+import { fromSecretStore, FuryStatusPoller, HttpFuryClient, type FuryClient, type Timers } from '@sctech/profilevault-fury-client';
+import { createHealth, thresholdsSeeder, type HealthBundle, type HealthService } from '@sctech/profilevault-health';
 
 export const SERVICE_VERSION = '0.1.0';
 
@@ -24,6 +25,7 @@ export interface BootstrapOptions {
   /** Mặc định `DpapiSecretStore` (chỉ Windows). Test truyền `MemorySecretStore`. */
   secretStore?: SecretStore;
   clock?: Clock;
+  timers?: Timers;
   seeders?: SeederRegistry;
   /** Ghi log ra stdout (dev). */
   logToStdout?: boolean;
@@ -31,6 +33,10 @@ export interface BootstrapOptions {
   pidAlive?: (pid: number) => boolean;
   /** Tiêm cho test khóa (giả lập tiến trình khác). */
   pid?: number;
+  /** Tiêm FuryClient (test); mặc định `HttpFuryClient` từ config. */
+  fury?: FuryClient;
+  /** Khởi động poller + lịch nền (mặc định true; test đặt false). */
+  startBackground?: boolean;
 }
 
 export interface ServiceContext {
@@ -43,6 +49,10 @@ export interface ServiceContext {
   logger: Logger;
   secrets: SecretStore;
   clock: Clock;
+  fury: FuryClient;
+  poller: FuryStatusPoller;
+  health: HealthService;
+  healthBundle: HealthBundle;
   firstRun: boolean;
   seeded: string[];
   shutdown(): Promise<void>;
@@ -56,7 +66,7 @@ export const DEFAULT_RUNNER_SETTINGS = {
 
 /**
  * Khởi động theo thứ tự SPEC-00 §11 / spec 001 US5:
- * khóa → thư mục → cấu hình → bí mật (HMAC) → CSDL + migration → seed → bus → log → audit.
+ * khóa → thư mục → cấu hình → bí mật (HMAC) → CSDL + migration → bus → Fury/Health → seed → audit → nền.
  */
 export async function bootstrap(opts: BootstrapOptions = {}): Promise<ServiceContext> {
   const env = opts.env ?? process.env;
@@ -69,6 +79,8 @@ export async function bootstrap(opts: BootstrapOptions = {}): Promise<ServiceCon
 
   let database: Database | undefined;
   let logger: Logger | undefined;
+  let poller: FuryStatusPoller | undefined;
+  let healthBundle: HealthBundle | undefined;
   try {
     // 2. Cấu hình
     const loaded = loadConfig(paths, env);
@@ -82,7 +94,7 @@ export async function bootstrap(opts: BootstrapOptions = {}): Promise<ServiceCon
     const hmac = await ensureHmacKey(secrets);
     await refreshSecretCache();
 
-    // 4. Log (che bí mật) — tạo sau khi có bí mật để redact đúng
+    // 4. Log (che bí mật)
     logger = createLogger({
       dir: paths.logsDir,
       clock,
@@ -101,17 +113,55 @@ export async function bootstrap(opts: BootstrapOptions = {}): Promise<ServiceCon
     const settings = new SettingsRepo(database.db, clock);
     const audit = new AuditRepo(database.db, clock);
 
-    // 6. Seed
+    // 6. Bus
+    const bus = new EventBus({ onListenerError: (event, err) => logger?.error('listener lỗi', { event, err: String(err) }) });
+
+    // 7. Fury + Health (SPEC-01, SPEC-02)
+    const fury =
+      opts.fury ??
+      new HttpFuryClient({
+        baseUrl: loaded.config.fury.apiBaseUrl,
+        supportedVersions: loaded.config.fury.supportedVersions,
+        getToken: fromSecretStore(secrets),
+        clock,
+        timers: opts.timers,
+        logger: logger.child({ pkg: 'fury-client' }),
+      });
+    const healthRef: { current: HealthService | null } = { current: null };
+    poller = new FuryStatusPoller({
+      client: fury,
+      bus,
+      clock,
+      timers: opts.timers,
+      logger: logger.child({ pkg: 'fury-poller' }),
+      listBoundProfileIds: () => healthRef.current?.listBindings().map((b) => b.furyProfileId) ?? [],
+      onProfileStatusChanged: (profileId, open, at) => healthRef.current?.recordFuryProfileStatus(profileId, open, at),
+      onVersionChanged: (from, to) => healthRef.current?.recordFuryVersionChanged(from, to),
+    });
+    const pollerRef = poller;
+    healthBundle = createHealth({
+      database,
+      bus,
+      clock,
+      timers: opts.timers,
+      fury,
+      logger: logger.child({ pkg: 'health' }),
+      config: loaded.config,
+      audit,
+      settings,
+      isFuryReachable: () => pollerRef.lastHealth?.reachable ?? false,
+    });
+    healthRef.current = healthBundle.health;
+
+    // 8. Seed
     const firstRun = !settings.has('schema_version');
     settings.set('schema_version', { migration: database.migration?.current ?? 0 }, 'system');
     if (!settings.has('runner')) settings.set('runner', DEFAULT_RUNNER_SETTINGS, 'system');
     const registry = opts.seeders ?? new SeederRegistry();
+    if (!registry.names().includes('thresholds')) registry.register('thresholds', thresholdsSeeder);
     const seeded = await registry.run({ database, settings, clock, logger });
 
-    // 7. Bus
-    const bus = new EventBus({ onListenerError: (event, err) => logger?.error('listener lỗi', { event, err: String(err) }) });
-
-    // 8. Audit
+    // 9. Audit
     if (firstRun) audit.append({ actorType: 'system', action: 'system.first_run', detail: { version: SERVICE_VERSION } });
     audit.append({
       actorType: 'system',
@@ -119,6 +169,13 @@ export async function bootstrap(opts: BootstrapOptions = {}): Promise<ServiceCon
       detail: { version: SERVICE_VERSION, schemaVersion: database.migration?.current ?? 0, firstRun },
     });
     logger.info('dịch vụ đã khởi động', { version: SERVICE_VERSION, firstRun, pid: process.pid });
+
+    // 10. Nền: poller Fury + lịch kiểm proxy
+    if (opts.startBackground !== false) {
+      poller.start();
+      void poller.tickHealth().catch(() => undefined);
+      healthBundle.health.start();
+    }
 
     let stopped = false;
     const ctx: ServiceContext = {
@@ -131,12 +188,18 @@ export async function bootstrap(opts: BootstrapOptions = {}): Promise<ServiceCon
       logger,
       secrets,
       clock,
+      fury,
+      poller,
+      health: healthBundle.health,
+      healthBundle,
       firstRun,
       seeded,
       async shutdown() {
         if (stopped) return;
         stopped = true;
         try {
+          pollerRef.stop();
+          healthBundle?.health.stop();
           audit.append({ actorType: 'system', action: 'system.stopped', detail: { version: SERVICE_VERSION } });
           logger?.info('dịch vụ dừng');
         } finally {
@@ -149,6 +212,8 @@ export async function bootstrap(opts: BootstrapOptions = {}): Promise<ServiceCon
     };
     return ctx;
   } catch (err) {
+    poller?.stop();
+    healthBundle?.health.stop();
     database?.close();
     logger?.close();
     lock.release();

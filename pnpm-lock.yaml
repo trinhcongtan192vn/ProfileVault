@@ -50,6 +50,12 @@ importers:
       '@sctech/profilevault-db':
         specifier: workspace:*
         version: link:../../packages/db
+      '@sctech/profilevault-fury-client':
+        specifier: workspace:*
+        version: link:../../packages/fury-client
+      '@sctech/profilevault-health':
+        specifier: workspace:*
+        version: link:../../packages/health
     devDependencies:
       tsx:
         specifier: ^4.20.0
@@ -159,6 +165,22 @@ importers:
         version: 5.0.4(@types/node@22.20.5)(vite@8.3.4(@types/node@22.20.5)(esbuild@0.28.2)(tsx@4.23.15))
 
   packages/health:
+    dependencies:
+      '@sctech/profilevault-contract':
+        specifier: workspace:*
+        version: link:../contract
+      '@sctech/profilevault-core':
+        specifier: workspace:*
+        version: link:../core
+      '@sctech/profilevault-db':
+        specifier: workspace:*
+        version: link:../db
+      '@sctech/profilevault-fury-client':
+        specifier: workspace:*
+        version: link:../fury-client
+      zod:
+        specifier: ^4.6.0
+        version: 4.6.7
     devDependencies:
       typescript:
         specifier: ~5.9.3

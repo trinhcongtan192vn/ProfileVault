@@ -1,6 +1,6 @@
 # Tiến độ triển khai ProfileVault
 
-**Cập nhật:** 2026-10-14 · **Giai đoạn:** M0 · **Nguồn sự thật:** `docs/prd.md` (= `profilevault-prd.md`), `docs/architecture.md` (= `profilevault-agent-architecture.md`), `docs/specs/SPEC-00…09`, `docs/specs/SPIKE-ke-hoach.md`.
+**Cập nhật:** 2026-10-14 (sau 003) · **Giai đoạn:** M0 · **Nguồn sự thật:** `docs/prd.md` (= `profilevault-prd.md`), `docs/architecture.md` (= `profilevault-agent-architecture.md`), `docs/specs/SPEC-00…09`, `docs/specs/SPIKE-ke-hoach.md`.
 
 File này để một phiên làm việc mới tiếp tục được từ chỗ dừng. Cập nhật sau mỗi feature.
 
@@ -18,9 +18,9 @@ File này để một phiên làm việc mới tiếp tục được từ chỗ 
 |---|---|---|---|---|
 | — | Bước 1–3: đọc docs, Spec Kit, CLAUDE.md, constitution | — | ✅ xong | commit `chore: init spec kit`, `docs: constitution and CLAUDE.md` |
 | 001 | Monorepo pnpm, `packages/contract`, `packages/db` (schema + migration SQLite đầy đủ), config, bí mật DPAPI, bus sự kiện, khóa một phiên bản, bootstrap `apps/service` | SPEC-00 toàn bộ | ✅ xong | 66 test; `specs/001-foundation-monorepo/`; thêm `packages/core` (decisions.md) |
-| 002 | `packages/fury-client`: giao diện, adapter HTTP (ánh xạ endpoint `TODO(SPIKE-P2)`), bộ theo dõi trạng thái, FakeFury | SPEC-01; SPEC-09 §3.1 | 🔄 đang làm | |
-| 003 | `packages/health` phần 1: binding, sự kiện, kiểm proxy theo lịch, ngưỡng, lên mức, hạ mức/dừng R1–R7, detect-suite, đồng hồ giả | SPEC-02 §1–5, §7–10 (trừ §6) | ⏳ chưa làm | |
-| 004 | `packages/health` phần 2: chuẩn hóa probe (`TODO(SPIKE-P3)`), 21 luật, checklist HMAC, `packages/host-info` (`TODO(SPIKE-P6)`) | SPEC-02 §6 | ⏳ chưa làm | |
+| 002 | `packages/fury-client`: giao diện, adapter HTTP (ánh xạ endpoint `TODO(SPIKE-P2)`), bộ theo dõi trạng thái, FakeFury | SPEC-01; SPEC-09 §3.1 | ✅ xong | 26 test; `specs/002-fury-client/`; endpoint giả định G8 |
+| 003 | `packages/health` phần 1: binding, sự kiện, kiểm proxy theo lịch, ngưỡng, lên mức, hạ mức/dừng R1–R7, detect-suite, đồng hồ giả | SPEC-02 §1–5, §7–10 (trừ §6) | ✅ xong | 27 test; `specs/003-health-levels/`; R1–R7, readiness, proxy check, scheduler, nối bootstrap |
+| 004 | `packages/health` phần 2: chuẩn hóa probe (`TODO(SPIKE-P3)`), 21 luật, checklist HMAC, `packages/host-info` (`TODO(SPIKE-P6)`) | SPEC-02 §6 | 🔄 đang làm | |
 | 005 | `packages/gateway` M0: Fastify loopback, kiểm Host/Origin, phiên dashboard `/auth/open`, toàn bộ `/internal/*`, SSE, audit, mã lỗi HTTP | SPEC-05 §2–4.1, §5.2, §7, §9–11 | ⏳ chưa làm | |
 | 006 | `apps/dashboard` + tray + toast: 8 trang, wizard gắn kênh, khai báo một chạm, biểu đồ, Chờ bạn, Cài đặt | SPEC-07 | ⏳ chưa làm | |
 | 007 | `packages/runner`: Flow contract, `ctx.ui`, humanGate, Runner, lịch + chạy bù, linter `tools/eslint-plugin-pv`; pack `generic/session-check` và `youtube/session-check` với fixture HTML | SPEC-03; SPEC-04 §2.1–2.2, §3, §4 | ⏳ chưa làm | |
@@ -56,15 +56,35 @@ Những điểm `docs/` không trả lời; đã chọn phương án nhất quá
 | G10 | Thêm dependency `semver` để kiểm `config.fury.supportedVersions` | 002 | SPEC-00 §3 không liệt kê; ghi `docs/decisions.md` |
 | G11 | Poller báo profile mở/đóng qua callback `onProfileStatusChanged` (DI) thay vì sự kiện bus; Health 003 nối để ghi `health_events` | 002 | SPEC-00 §10 không có sự kiện bus cho việc này |
 | G12 | FakeFury ở `src/testing/fake-fury.ts`, xuất `@sctech/profilevault-fury-client/testing`; `test/fake-fury.ts` tái xuất; `launchHandler` tiêm được (007 tiêm Chromium thật) | 002 | SPEC-09 §3.1 đặt ở `test/` nhưng health/runner cũng cần dùng |
+| G13 | R3 (trùng exit IP) phát hiện ngay sau mỗi kiểm proxy từ `proxy_checks` ok gần nhất của mọi binding; luật D1 (004) chỉ báo cáo cùng dữ liệu | 003 | SPEC-02 R3 "tự gỡ khi lần kiểm kế tiếp" = kiểm proxy |
+| G14 | `consistency_clear`, `checklist_valid` là evaluator tiêm (004 đăng ký); mặc định chưa đạt | 003 | Hai điều kiện thuộc §6 |
+| G15 | Toast "đạt ngưỡng" qua `onReadinessReached` (DI), không qua bus | 003 | SPEC-00 §10 không có sự kiện này |
+| G16 | Số liệu run cho ngưỡng (`flow_success_rate`, `l2_correct_rate`, `event_count_by_mode`, `no_open_site_changed`) tính từ `health_events` do `recordRunOutcome` ghi, không đọc bảng `runs` | 003 | Health độc lập với Runner |
+| G17 | Phiên bản Fury hiện tại lưu `settings['fury.currentVersion']` do poller cập nhật; chưa biết → `detect_suite_pass` chưa đạt | 003 | SPEC-02 không nói nguồn "phiên bản hiện tại" |
+| G18 | Lịch kiểm proxy: RNG seed, giờ địa phương bằng `Intl` theo `config.ui.timezone`; lượt lỡ khi tắt tiến trình không chạy bù | 003 | SPEC-02 §7 chỉ nêu 4 khung giờ |
 | G7 | Cơ chế seed lần chạy đầu: `registerSeeder` idempotent; 003/004 đăng ký ngưỡng và luật mặc định | 001 | SPEC-00 §11 nói "ghi luật nhất quán và ngưỡng mặc định" nhưng nội dung ở SPEC-02 |
 
 ## 5. TODO(SPIKE-Pn) còn lại
 
-Cập nhật sau mỗi feature (lệnh: `grep -rn "TODO(SPIKE-" packages apps packs tools`).
+Cập nhật sau mỗi feature (lệnh: `grep -rn --exclude-dir=dist "TODO(SPIKE-" packages apps packs tools`).
 
 | Spike | File | Nội dung |
 |---|---|---|
-| (chưa có) | | |
+| SPIKE-P2 | `packages/fury-client/src/adapter/endpoint-map.ts:4` | * TODO(SPIKE-P2): toàn bộ đường dẫn, phương thức và tên trường dưới đây là GIẢ ĐỊNH (docs/progress.md G8). |
+| SPIKE-P2 | `packages/fury-client/src/adapter/endpoint-map.ts:47` | /** `getProfile` có trả `seed` không. TODO(SPIKE-P2) */ |
+| SPIKE-P5 | `packages/fury-client/src/adapter/endpoint-map.ts:49` | /** `checkExit` có trả `asnType` không. TODO(SPIKE-P5) */ |
+| SPIKE-P2 | `packages/fury-client/src/adapter/endpoint-map.ts:76` | // ---- Schema thô (lỏng, passthrough) — TODO(SPIKE-P2) tên trường giả định ---- |
+| SPIKE-P2 | `packages/fury-client/src/adapter/endpoint-map.ts:186` | /** Bộ ánh xạ mặc định — TODO(SPIKE-P2): xác minh từng route với Fury thật. */ |
+| SPIKE-P5 | `packages/fury-client/src/adapter/endpoint-map.ts:238` | // TODO(SPIKE-P5): Fury có kiểm exit không mở trình duyệt không; định dạng asnType. |
+| SPIKE-P2 | `packages/fury-client/src/adapter/endpoint-map.ts:259` | seed: 'missing', // TODO(SPIKE-P2) |
+| SPIKE-P5 | `packages/fury-client/src/adapter/endpoint-map.ts:260` | asnType: 'fallback', // TODO(SPIKE-P5): nếu Fury trả asnType → native |
+| SPIKE-P2 | `packages/fury-client/src/adapter/profile-config-file.ts:3` | * CHỈ ĐỌC. TODO(SPIKE-P2): vị trí file và định dạng là giả định; tiêm `locate`/`parse` sau spike. |
+| SPIKE-P2 | `packages/fury-client/src/adapter/profile-config-file.ts:15` | /** Đường dẫn file cấu hình của profile. Mặc định `<dataDir>/profiles/<id>/profile.json` — TODO(SPIKE-P2). */ |
+| SPIKE-P2 | `packages/fury-client/src/adapter/profile-config-file.ts:17` | /** Chuyển JSON thô → trường của FuryProfileDetail. Mặc định chỉ lấy các trường trùng tên — TODO(SPIKE-P2). */ |
+| SPIKE-P2 | `packages/fury-client/src/testing/fake-fury.ts:3` | * Cài ĐÚNG bộ ánh xạ giả định ở src/adapter/endpoint-map.ts. TODO(SPIKE-P2): cập nhật cùng endpoint-map sau sp |
+| SPIKE-P2 | `packages/fury-client/src/testing/fake-fury.ts:158` | // ---- xử lý HTTP (bộ ánh xạ giả định — TODO(SPIKE-P2)) ---- |
+| SPIKE-P2 | `packages/fury-client/test/http-client.test.ts:87` | it('getProfile hợp nhất fallback file cấu hình (TODO(SPIKE-P2)) cho trường còn thiếu', async () => { |
+| SPIKE-P2 | `packages/fury-client/test/version-adapter.test.ts:20` | describe('bộ ánh xạ endpoint mặc định (TODO(SPIKE-P2))', () => { |
 
 ## 6. Thay đổi với `docs/`
 
