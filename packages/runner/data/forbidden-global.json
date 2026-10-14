@@ -1,0 +1,6 @@
+[
+  "^(publish|public|schedule|go live|đăng|công khai|lên lịch|veröffentlichen|öffentlich|planen)$",
+  "delete (account|channel)",
+  "xóa (tài khoản|kênh)",
+  "change password|đổi mật khẩu|account recovery|khôi phục tài khoản"
+]

@@ -5,6 +5,7 @@
     "outDir": "dist"
   },
   "include": [
-    "src/**/*"
-  ]
+    "src/**/*", "data/*.json"
+  ],
+  "references": [{ "path": "../../packages/contract" }, { "path": "../../packages/runner" }]
 }

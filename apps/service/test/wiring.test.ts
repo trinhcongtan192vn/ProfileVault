@@ -29,7 +29,7 @@ describe('wiring Fury ↔ poller ↔ Health (spec 003 T015)', () => {
       const fury = new HttpFuryClient({ baseUrl: fake.baseUrl, supportedVersions: '>=0.2.21 <0.4.0', timers, clock, maxRetries: 0 });
       const ctx = await bootstrap({ env, secretStore: new MemorySecretStore(), clock, timers, fury, pidAlive: () => true, startBackground: true });
       try {
-        expect(timers.intervals.map((i) => i.ms).sort((a, b) => a - b)).toEqual([60_000, 60_000, 60_000, 300_000]); // poller health, lịch proxy, lịch nhất quán, poller status
+        expect(timers.intervals.map((i) => i.ms).sort((a, b) => a - b)).toEqual([2000, 2000, 60_000, 60_000, 60_000, 300_000, 86_400_000]); // Runner, lịch flow, poller health, proxy/nhất quán, poller status, retention
         fake.upsertProfile({ id: 'p1', name: 'A', personaId: 'x' });
         const b = await ctx.health.createBinding({ platform: 'youtube', accountId: 'UC1', displayName: 'A', furyProfileId: 'p1', marketCountry: 'DE' });
         await ctx.poller.tickHealth();

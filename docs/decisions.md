@@ -9,3 +9,4 @@ Ghi mọi lần một quyết định trong `docs/` bị đổi khi triển khai
 | 2026-10-14 | Thêm dependency `semver` (ngoài SPEC-00 §3) cho `packages/fury-client` | Kiểm `config.fury.supportedVersions` là semver range (SPEC-01 §6); tự viết parser range không đáng rủi ro | — |
 | 2026-10-14 | `session_check.ok` cho phép mức `warn` (ngoài `info`) khi `studioLanguageOk = false` | SPEC-04 §4 yêu cầu "Health ghi sự kiện warn" nhưng SPEC-00 §7.1 chỉ ghi `info`; dùng cùng loại sự kiện với mức khác thay vì thêm loại mới | `docs/specs/SPEC-00-nen-tang.md` §7.1 |
 | 2026-10-14 | `config.gateway.port` cho phép 0 (hệ điều hành chọn cổng) | Chạy test/dev song song không đụng cổng 50410; mặc định vẫn 50410 | — |
+| 2026-10-14 | Thêm dependency trực tiếp `ajv` cho Runner | SPEC-03 §2.2 dùng JSON Schema của pack; Ajv kiểm cấu hình pack người dùng đầy đủ, tránh tự viết bộ kiểm một phần. Gói đã có trong cây dependency Fastify | — |

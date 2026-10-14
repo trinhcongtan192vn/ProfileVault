@@ -7,6 +7,7 @@ import { PvError, type SessionInfo } from '@sctech/profilevault-contract';
 import Fastify, { type FastifyInstance, type FastifyReply, type FastifyRequest } from 'fastify';
 import type { GatewayDeps } from './deps.js';
 import { registerCoreRoutes } from './routes/core.js';
+import { registerDashboardRoutes } from './routes/dashboard.js';
 import { registerOpsRoutes } from './routes/ops.js';
 import { assertLoopback, hostAllowed, isWriteMethod, mapError, originAllowed } from './security.js';
 import { CSRF_HEADER, OpenCodeStore, SESSION_COOKIE, SessionStore, type Session } from './session.js';
@@ -18,7 +19,7 @@ export interface Gateway {
   listen(): Promise<string>;
   close(): Promise<void>;
   /** URL mở dashboard một lần cho tray (SPEC-05 §4.1). */
-  createOpenUrl(): string;
+  createOpenUrl(next?: string): string;
   port(): number;
   sessions: SessionStore;
   openCodes: OpenCodeStore;
@@ -60,7 +61,7 @@ export async function createGateway(deps: GatewayDeps): Promise<Gateway> {
 
   // ---- SPEC-05 §4.1: phiên dashboard ----
   app.get('/auth/open', async (req, reply) => {
-    const code = (req.query as { code?: string }).code;
+    const { code, next } = req.query as { code?: string; next?: string };
     if (!openCodes.consume(code)) {
       req.denyReason = 'open_code';
       return reply.code(401).send({ error: { code: 'UNAUTHORIZED', message: 'Mã mở dashboard không hợp lệ hoặc đã hết hạn. Mở lại từ biểu tượng tray.' } });
@@ -68,7 +69,9 @@ export async function createGateway(deps: GatewayDeps): Promise<Gateway> {
     const s = sessions.create();
     deps.audit.append({ actorType: 'user', action: 'dashboard.login' });
     reply.setCookie(SESSION_COOKIE, s.id, { httpOnly: true, sameSite: 'strict', path: '/', secure: false });
-    return reply.redirect('/', 302);
+    // chỉ đường dẫn nội bộ (chống open redirect)
+    const target = typeof next === 'string' && /^\/(?!\/)[\w\-/?=&%.]*$/.test(next) ? next : '/';
+    return reply.redirect(target, 302);
   });
   app.post('/auth/logout', async (req, reply) => {
     const id = req.cookies[SESSION_COOKIE];
@@ -116,6 +119,7 @@ export async function createGateway(deps: GatewayDeps): Promise<Gateway> {
   // ---- route ----
   registerCoreRoutes(app, deps);
   registerOpsRoutes(app, deps);
+  registerDashboardRoutes(app, deps);
   const sse = registerSse(app, deps);
 
   // ---- SPA / trang tối thiểu (SPEC-05 §3) ----
@@ -155,8 +159,9 @@ export async function createGateway(deps: GatewayDeps): Promise<Gateway> {
     async close() {
       await app.close();
     },
-    createOpenUrl() {
-      return `http://127.0.0.1:${actualPort}/auth/open?code=${openCodes.create()}`;
+    createOpenUrl(next?: string) {
+      const n = next ? `&next=${encodeURIComponent(next)}` : '';
+      return `http://127.0.0.1:${actualPort}/auth/open?code=${openCodes.create()}${n}`;
     },
   };
 }

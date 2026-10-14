@@ -13,7 +13,6 @@
     { "path": "packs/generic" },
     { "path": "packs/youtube" },
     { "path": "tools/eslint-plugin-pv" },
-    { "path": "apps/service" },
-    { "path": "apps/dashboard" }
+    { "path": "apps/service" }
   ]
 }

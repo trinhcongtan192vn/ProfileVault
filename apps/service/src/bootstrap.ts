@@ -18,9 +18,11 @@ import { AuditRepo, openDatabase, SettingsRepo, type Database } from '@sctech/pr
 import { fromSecretStore, FuryStatusPoller, HttpFuryClient, type FuryClient, type Timers } from '@sctech/profilevault-fury-client';
 import { createHealth, type HealthBundle, type HealthService } from '@sctech/profilevault-health';
 import { createGateway, type Gateway, type RunnerFacade } from '@sctech/profilevault-gateway';
+import { PackLoader, Runner } from '@sctech/profilevault-runner';
 import { captureHostSnapshot } from '@sctech/profilevault-host-info';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { readdirSync, existsSync } from 'node:fs';
 
 export const SERVICE_VERSION = '0.1.0';
 
@@ -43,7 +45,7 @@ export interface BootstrapOptions {
   startBackground?: boolean;
   /** Gateway lắng nghe cổng (mặc định = startBackground). */
   listen?: boolean;
-  /** Runner facade (007); mặc định NoRunner. */
+  /** Runner facade tiêm cho test; mặc định Runner thật. */
   runner?: RunnerFacade;
   /** Thư mục SPA đã build; mặc định apps/dashboard/dist cạnh service. */
   staticDir?: string;
@@ -64,6 +66,7 @@ export interface ServiceContext {
   health: HealthService;
   healthBundle: HealthBundle;
   gateway: Gateway;
+  runner: RunnerFacade;
   /** URL gateway khi đã listen. */
   gatewayUrl: string | null;
   firstRun: boolean;
@@ -95,6 +98,7 @@ export async function bootstrap(opts: BootstrapOptions = {}): Promise<ServiceCon
   let poller: FuryStatusPoller | undefined;
   let healthBundle: HealthBundle | undefined;
   let gateway: Gateway | undefined;
+  let ownedRunner: Runner | undefined;
   try {
     // 2. Cấu hình
     const loaded = loadConfig(paths, env);
@@ -189,6 +193,19 @@ export async function bootstrap(opts: BootstrapOptions = {}): Promise<ServiceCon
     logger.info('dịch vụ đã khởi động', { version: SERVICE_VERSION, firstRun, pid: process.pid });
 
     // 10. Gateway (SPEC-05)
+    if (!opts.runner) {
+      const loader = new PackLoader(() => healthBundle?.health.currentFuryVersion());
+      const packsDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..', '..', 'packs');
+      for (const name of ['generic', 'youtube']) await loader.load(path.join(packsDir, name));
+      for (const entry of readdirSync(paths.extensionsDir, { withFileTypes: true }).filter((e) => e.isDirectory() && !e.isSymbolicLink())) {
+        const dir = path.join(paths.extensionsDir, entry.name);
+        if (!existsSync(path.join(dir, 'pack.json'))) continue;
+        try { await loader.load(dir); } catch (err) { logger.warn('Không nạp được pack mở rộng', { pack: entry.name, error: String(err) }); }
+      }
+      ownedRunner = new Runner({ database, clock, config: loaded.config, settings, audit, bus, health: healthBundle.health, fury, logger: logger.child({ pkg: 'runner' }), runsDir: paths.runsDir, loader, timers: opts.timers });
+      await ownedRunner.recover();
+    }
+    const runner = opts.runner ?? ownedRunner!;
     gateway = await createGateway({
       config: loaded.config,
       clock,
@@ -203,7 +220,7 @@ export async function bootstrap(opts: BootstrapOptions = {}): Promise<ServiceCon
       settings,
       database,
       paths: { probesDir: paths.probesDir },
-      runner: opts.runner,
+      runner,
       staticDir: opts.staticDir ?? defaultStaticDir(),
       serviceVersion: SERVICE_VERSION,
       startedAt: clock.nowIso(),
@@ -216,6 +233,7 @@ export async function bootstrap(opts: BootstrapOptions = {}): Promise<ServiceCon
       poller.start();
       void poller.tickHealth().catch(() => undefined);
       healthBundle.health.start();
+      ownedRunner?.start();
     }
 
     let stopped = false;
@@ -234,6 +252,7 @@ export async function bootstrap(opts: BootstrapOptions = {}): Promise<ServiceCon
       health: healthBundle.health,
       healthBundle,
       gateway,
+      runner,
       gatewayUrl,
       firstRun,
       seeded,
@@ -242,6 +261,7 @@ export async function bootstrap(opts: BootstrapOptions = {}): Promise<ServiceCon
         stopped = true;
         try {
           pollerRef.stop();
+          await ownedRunner?.stop();
           healthBundle?.health.stop();
           await gateway?.close();
           audit.append({ actorType: 'system', action: 'system.stopped', detail: { version: SERVICE_VERSION } });
@@ -257,6 +277,7 @@ export async function bootstrap(opts: BootstrapOptions = {}): Promise<ServiceCon
     return ctx;
   } catch (err) {
     poller?.stop();
+    await ownedRunner?.stop();
     healthBundle?.health.stop();
     await gateway?.close().catch(() => undefined);
     database?.close();

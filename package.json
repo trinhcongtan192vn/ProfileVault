@@ -9,15 +9,17 @@
   },
   "type": "module",
   "scripts": {
-    "build": "tsc -b",
-    "typecheck": "tsc -b",
+    "build": "tsc -b && pnpm --filter @sctech/profilevault-dashboard build",
+    "typecheck": "tsc -b && pnpm --filter @sctech/profilevault-dashboard typecheck",
     "lint": "eslint .",
-    "test": "tsc -b && vitest run",
+    "test": "pnpm build && vitest run && playwright test",
+    "test:flows": "pnpm build && playwright test",
     "test:watch": "vitest",
     "dev": "pnpm --filter @sctech/profilevault-service dev"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.0",
+    "@playwright/test": "^1.64.1",
     "@types/node": "^22.19.0",
     "eslint": "^10.0.0",
     "globals": "^17.0.0",

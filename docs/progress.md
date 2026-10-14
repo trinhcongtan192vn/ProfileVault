@@ -1,8 +1,14 @@
 # Tiến độ triển khai ProfileVault
 
-**Cập nhật:** 2026-10-14 (sau 005) · **Giai đoạn:** M0 · **Nguồn sự thật:** `docs/prd.md` (= `profilevault-prd.md`), `docs/architecture.md` (= `profilevault-agent-architecture.md`), `docs/specs/SPEC-00…09`, `docs/specs/SPIKE-ke-hoach.md`.
+**Cập nhật:** 2026-10-14 (sau triển khai 006/007) · **Giai đoạn:** M0, chờ nghiệm thu desktop/live · **Nguồn sự thật:** `docs/prd.md` (= `profilevault-prd.md`), `docs/architecture.md` (= `profilevault-agent-architecture.md`), `docs/specs/SPEC-00…09`, `docs/specs/SPIKE-ke-hoach.md`.
 
 File này để một phiên làm việc mới tiếp tục được từ chỗ dừng. Cập nhật sau mỗi feature.
+
+**Điểm dừng hiện tại:** code M0 (001–007) xong và đã commit/push; `pnpm build`, `pnpm lint`, `pnpm test` xanh
+(255 Vitest + 7 Playwright fixture). 006 còn task T015 là nghiệm thu desktop Windows bằng tay (tray, toast, autostart).
+Feature 008 (onboarding tự tải/cài Fury) đã **bỏ** theo yêu cầu người dùng; quy tắc "không cài Fury" giữ nguyên.
+Chưa chạy Fury/YouTube thật, chưa chạy P1–P7 (trừ P6 nếu ghi ở SPIKE-bao-cao), chưa đủ điều kiện phát hành M0/live.
+Không bắt đầu M1 khi P4 chưa đạt (SPIKE-ke-hoach "Thứ tự").
 
 ## 1. Quy trình mỗi feature
 
@@ -22,9 +28,9 @@ File này để một phiên làm việc mới tiếp tục được từ chỗ 
 | 003 | `packages/health` phần 1: binding, sự kiện, kiểm proxy theo lịch, ngưỡng, lên mức, hạ mức/dừng R1–R7, detect-suite, đồng hồ giả | SPEC-02 §1–5, §7–10 (trừ §6) | ✅ xong | 27 test; `specs/003-health-levels/`; R1–R7, readiness, proxy check, scheduler, nối bootstrap |
 | 004 | `packages/health` phần 2: chuẩn hóa probe (`TODO(SPIKE-P3)`), 22 luật (SPEC-02 §6.4 có 22, không phải 21), checklist HMAC, `packages/host-info` (`TODO(SPIKE-P6)`) | SPEC-02 §6 | ✅ xong | 56 test health; `specs/004-consistency-rules/` |
 | 005 | `packages/gateway` M0: Fastify loopback, kiểm Host/Origin, phiên dashboard `/auth/open`, toàn bộ `/internal/*`, SSE, audit, mã lỗi HTTP | SPEC-05 §2–4.1, §5.2, §7, §9–11 | ✅ xong | 21 test; `specs/005-gateway-internal/`; Runner facade chờ 007 |
-| 006 | `apps/dashboard` + tray + toast: 8 trang, wizard gắn kênh, khai báo một chạm, biểu đồ, Chờ bạn, Cài đặt | SPEC-07 | 🔄 đang làm | |
-| 007 | `packages/runner`: Flow contract, `ctx.ui`, humanGate, Runner, lịch + chạy bù, linter `tools/eslint-plugin-pv`; pack `generic/session-check` và `youtube/session-check` với fixture HTML | SPEC-03; SPEC-04 §2.1–2.2, §3, §4 | ⏳ chưa làm | |
-| — | Bước 5: `spikes/` P1–P7 + `docs/specs/SPIKE-bao-cao.md` (mẫu trống) | SPIKE-ke-hoach | ⏳ chưa làm | Không chạy spike |
+| 006 | `apps/dashboard` + tray + toast: 8 trang, wizard gắn kênh, khai báo một chạm, biểu đồ, Chờ bạn, Cài đặt | SPEC-07 | ⚠️ xong code | 17/18 task; T015 còn nghiệm thu desktop. Smoke Chromium đã kiểm wizard 2 kênh, upload/undo/SSE/CAPTCHA/CSV |
+| 007 | `packages/runner`: Flow contract, `ctx.ui`, humanGate, Runner, lịch + chạy bù, linter `tools/eslint-plugin-pv`; pack `generic/session-check` và `youtube/session-check` với fixture HTML | SPEC-03; SPEC-04 §2.1–2.2, §3, §4 | ✅ xong code | 15/15 task; Runner thật nối bootstrap/gateway; CDP Chromium thật qua FakeFury, không Fury thật |
+| — | Bước 5: `spikes/` P1–P7 + `docs/specs/SPIKE-bao-cao.md` (mẫu trống) | SPIKE-ke-hoach | ✅ chuẩn bị | Script/hướng dẫn và mẫu báo cáo; không chạy spike. Server mẫu MCP P7 cần chuẩn bị trong phiên spike/M1 |
 
 Ký hiệu: ⏳ chưa làm · 🔄 đang làm · ✅ xong · ⚠️ xong có ghi chú.
 
@@ -75,6 +81,14 @@ Những điểm `docs/` không trả lời; đã chọn phương án nhất quá
 | G28 | Mã `/auth/open` và phiên dashboard giữ trong bộ nhớ (mất khi khởi động lại); `createOpenUrl()` cho tray | 005 | SPEC-05 §4.1 không nói lưu trữ |
 | G29 | Nhập probe nhận cả multipart `file` lẫn JSON `{ raw }` | 005 | SPEC-05 §7 ghi multipart; JSON tiện cho skill/test |
 | G30 | Biểu đồ SPEC-07 §8 tổng hợp trong gateway từ bảng §8; `settings.runner` gộp mặc định từ `config.runner`+`limits` để dashboard sửa | 005 | SPEC-07 §8 nói "server tổng hợp bằng SQL" |
+| G31 | Hoàn tác khai báo một chạm = ghi `manual.note` với `payload.undoOf` (≤ 10 phút, chỉ upload/note); `event_count` bỏ sự kiện bị hoàn tác | 006 | SPEC-07 §5 "hoàn tác = ghi sự kiện bù, không xóa" |
+| G32 | Thêm endpoint tổng hợp `/internal/overview`, `/internal/inbox`, undo; `/auth/open?next=` để toast mở đúng trang | 006 | Giảm số request; SPEC-05 §7 không cấm |
+| G33 | UI kiểm bằng test thuần + SSR (`renderToString`); nghiệm thu giao diện thủ công | 006 | SPEC-09 AT-M0-1/2 ghi "thủ công"; không thêm jsdom |
+| G34 | Tray "Thoát" xác nhận bằng bấm lần hai trong 10 s; icon .ico sinh bằng mã; autostart qua `reg add HKCU...Run` | 006 | systray2 không có hộp thoại; NSIS (SPEC-00 §11) để sau |
+| G35 | Slots lịch theo binding/ngày lưu ở `settings['schedule.slots:<id>']`; bảng schedules giữ nextRunAt tổng hợp, client scheduler dùng idempotency key theo spec | 007 | Bảng nền tảng chỉ có một next_run_at cho lịch nhiều binding |
+| G36 | Checkpoint phiên bản 1 giữ state, kết quả bước, tên bước, gate results và chỉ số gate cuối từng bước; replay flow bỏ bước đã xong | 007 | Cần khôi phục giá trị trả về của step/gate khi tiến trình tắt |
+| G37 | Selector/URL session-check hiện dùng fixture + TODO(SPIKE-P4); test CDP dùng Chromium thường và FakeFury | 007 | Chưa có bằng chứng live P4 |
+| G38 | Pack có dist/index.js xuất mảng flows; nạp pack chính thức và extensions/flows, lint TS/JS trước import, kiểm JSON Schema bằng Ajv | 007 | Cơ chế entry module chưa được SPEC-03 chốt; Ajv ghi trong decisions.md |
 | G7 | Cơ chế seed lần chạy đầu: `registerSeeder` idempotent; 003/004 đăng ký ngưỡng và luật mặc định | 001 | SPEC-00 §11 nói "ghi luật nhất quán và ngưỡng mặc định" nhưng nội dung ở SPEC-02 |
 
 ## 5. TODO(SPIKE-Pn) còn lại
@@ -121,4 +135,7 @@ pnpm test           # build + vitest (unit + integration)
 pnpm dev            # apps/service qua tsx (PV_APPDATA_DIR / PV_LOCALAPPDATA_DIR để đổi thư mục dữ liệu)
 ```
 
-Mở dashboard: menu tray → "Mở dashboard" (hoặc xem mục "Lệnh" sau khi feature 005/006 xong).
+Mở app bản thử từ mã nguồn: bấm đúp `Open-ProfileVault.cmd` (hoặc `.vbs`; Git Bash: `./open-profilevault.sh`).
+Script chạy `tools/launch-local.ps1`: lần đầu hỏi rồi `pnpm install`, mỗi lần `pnpm build`, khởi động dịch vụ với dữ liệu riêng
+`.pv-data/local` (đã gitignore) và mở dashboard. Khi dịch vụ đang chạy, bấm lại chỉ mở dashboard. Cần Node 22 + pnpm 10.
+Đang chạy: menu tray → "Mở dashboard".

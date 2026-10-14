@@ -6,7 +6,7 @@ import { FakeTimers, FuryStatusPoller, HttpFuryClient } from '@sctech/profilevau
 import { FakeFury } from '@sctech/profilevault-fury-client/testing';
 import { createHealth, type HealthBundle } from '@sctech/profilevault-health';
 import type { InjectOptions, LightMyRequestResponse } from 'fastify';
-import { createGateway, CSRF_HEADER, SESSION_COOKIE, type Gateway, type RunnerFacade } from '../src/index.js';
+import { createGateway, CSRF_HEADER, SESSION_COOKIE, type Gateway, type GatewayDeps, type RunnerFacade } from '../src/index.js';
 
 export interface GwHarness {
   gw: Gateway;
@@ -41,6 +41,9 @@ export class FakeRunner implements RunnerFacade {
   }
   getRun(id: string) {
     return this.runs.get(id);
+  }
+  listNeedsUser() {
+    return [...this.runs.values()].filter((r) => r.status === 'needs_user');
   }
   async cancelRun(id: string) {
     this.cancelled.push(id);
@@ -81,7 +84,7 @@ export class FakeRunner implements RunnerFacade {
   };
 }
 
-export async function makeGateway(opts: { runner?: RunnerFacade; staticDir?: string; port?: number; host?: string } = {}): Promise<GwHarness> {
+export async function makeGateway(opts: { setup?: GatewayDeps['setup']; runner?: RunnerFacade; staticDir?: string; port?: number; host?: string } = {}): Promise<GwHarness> {
   const t = openTestDatabase();
   const clock = new FakeClock('2026-10-14T03:00:00.000Z');
   const bus = new EventBus({ onListenerError: () => undefined });
@@ -129,6 +132,7 @@ export async function makeGateway(opts: { runner?: RunnerFacade; staticDir?: str
     database: t.database,
     paths: { probesDir: path.join(t.dir, 'probes') },
     runner: opts.runner,
+    setup: opts.setup,
     staticDir: opts.staticDir,
     serviceVersion: '0.1.0-test',
     startedAt: clock.nowIso(),

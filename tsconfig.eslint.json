@@ -6,9 +6,11 @@
     "declarationMap": false,
     "sourceMap": false,
     "noEmit": true,
+    "lib": ["ES2023", "DOM"],
     "allowJs": true
   },
   "include": [
+    "tests/**/*.ts",
     "apps/*/src/**/*",
     "apps/*/test/**/*",
     "packages/*/src/**/*",

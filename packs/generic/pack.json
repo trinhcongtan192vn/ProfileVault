@@ -1,0 +1,1 @@
+{ "id": "generic", "version": "1.0.0", "platform": "*", "appApi": "^1.0.0", "furyVersions": ">=0.2.21 <0.4.0", "bindingConfigSchema": "./binding-config.schema.json", "forbiddenActions": [], "flows": ["session-check"] }

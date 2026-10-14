@@ -100,7 +100,9 @@ export class ReadinessEvaluator {
         return { condition: c, met: days >= c.min, current: days, required: c.min };
       }
       case 'event_count': {
-        const n = this.eventsSince(binding, [c.type]).length;
+        // bỏ sự kiện đã bị hoàn tác (manual.note payload.undoOf — giả định G31)
+        const undone = new Set(this.d.events.list({ bindingId: binding.id, types: ['manual.note'], limit: 10_000 }).map((e) => e.payload.undoOf).filter((x): x is string => typeof x === 'string'));
+        const n = this.eventsSince(binding, [c.type]).filter((e) => !undone.has(e.id)).length;
         return { condition: c, met: n >= c.min, current: n, required: c.min };
       }
       case 'no_red_events': {

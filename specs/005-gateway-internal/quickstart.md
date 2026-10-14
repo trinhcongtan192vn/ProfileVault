@@ -3,7 +3,7 @@
 ```powershell
 pnpm build
 pnpm exec vitest run --project gateway
-$env:PV_APPDATA_DIR = "$env:TEMP\pv-devppdata"; $env:PV_LOCALAPPDATA_DIR = "$env:TEMP\pv-dev\local"
+$env:PV_APPDATA_DIR = "$env:TEMP\pv-dev\appdata"; $env:PV_LOCALAPPDATA_DIR = "$env:TEMP\pv-dev\local"
 pnpm dev   # in ra "Dashboard: http://127.0.0.1:50410/auth/open?code=..." — mở URL trong 60 giây
 ```
 

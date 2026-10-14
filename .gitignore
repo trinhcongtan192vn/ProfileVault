@@ -23,6 +23,8 @@ probes/
 **/.pv-data/
 test-results/
 playwright-report/
+spikes/results/
+.lint-results.json
 
 # Spec Kit (trạng thái cục bộ)
 .specify/feature.json

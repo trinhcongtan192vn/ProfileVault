@@ -51,7 +51,7 @@ type Cap = Exclude<FuryCapability, never>;
 
 /** FuryClient qua automation API HTTP (SPEC-01 §5, §6, §8). */
 export class HttpFuryClient implements FuryClient {
-  private readonly baseUrl: string | null;
+  private baseUrl: string | null;
   private readonly fetchFn: typeof fetch;
   private readonly timers: Timers;
   private readonly clock: Clock;
@@ -69,10 +69,17 @@ export class HttpFuryClient implements FuryClient {
     this.maxRetries = opts.maxRetries ?? 2;
   }
 
-  async health(): Promise<FuryHealth> {
+  configureAddress(baseUrl: string): void {
+    const normalized = normalizeBaseUrl(baseUrl);
+    if (!normalized) throw new PvError('INPUT_INVALID', 'Địa chỉ Fury không hợp lệ');
+    this.baseUrl = normalized;
+    this.opts.baseUrl = baseUrl;
+  }
+
+  async health(opts: { retry?: boolean } = {}): Promise<FuryHealth> {
     const checkedAt = this.clock.nowIso();
     try {
-      const { version } = await this.call('health', undefined, { retry: true });
+      const { version } = await this.call('health', undefined, { retry: opts.retry ?? true });
       const v = normalizeVersion(version);
       const out: FuryHealth = { reachable: true, supported: isSupportedVersion(v, this.opts.supportedVersions), checkedAt };
       if (v !== undefined) out.version = v;

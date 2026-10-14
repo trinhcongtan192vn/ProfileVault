@@ -1,5 +1,7 @@
+import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
-  test: { name: 'profilevault-dashboard', include: ['test/**/*.test.ts'], passWithNoTests: true },
+  plugins: [react()],
+  test: { name: 'dashboard', include: ['test/**/*.test.{ts,tsx}'], environment: 'node' },
 });

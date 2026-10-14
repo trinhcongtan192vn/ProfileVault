@@ -18,9 +18,15 @@
     "@sctech/profilevault-fury-client": "workspace:*",
     "@sctech/profilevault-gateway": "workspace:*",
     "@sctech/profilevault-health": "workspace:*",
-    "@sctech/profilevault-host-info": "workspace:*"
+    "@sctech/profilevault-host-info": "workspace:*",
+    "@sctech/profilevault-pack-generic": "workspace:*",
+    "@sctech/profilevault-pack-youtube": "workspace:*",
+    "@sctech/profilevault-runner": "workspace:*",
+    "node-notifier": "^11.0.0",
+    "systray2": "^2.1.4"
   },
   "devDependencies": {
+    "@types/node-notifier": "^8.0.5",
     "tsx": "^4.20.0",
     "typescript": "~5.9.3",
     "vitest": "^5.0.4"

@@ -10,7 +10,7 @@ import type {
 
 /** Lớp duy nhất nói chuyện với Fury (SPEC-01 §3). Mọi package khác chỉ dùng giao diện này. */
 export interface FuryClient {
-  health(): Promise<FuryHealth>;
+  health(opts?: { retry?: boolean }): Promise<FuryHealth>;
   listProfiles(): Promise<FuryProfileSummary[]>;
   getProfile(profileId: string): Promise<FuryProfileDetail>;
   getStatus(profileId: string): Promise<FuryProfileStatus>;

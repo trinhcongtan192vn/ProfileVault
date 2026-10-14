@@ -12,6 +12,7 @@ import {
   SessionCheckOutcomeSchema,
   ThresholdsSchema,
   UpdateBindingInputSchema,
+  UNDO_WINDOW_MS,
   type AsnAttestationInput,
   type AutomationLevel,
   type Binding,
@@ -87,6 +88,8 @@ export interface HealthService {
 
   // ---- sự kiện ----
   recordManualEvent(bindingId: string, type: ManualEventType, occurredAt?: string, note?: string, actor?: string): Promise<HealthEventRecord>;
+  /** Hoàn tác khai báo một chạm: ghi sự kiện bù `manual.note` với `undoOf` (SPEC-07 §5). */
+  undoManualEvent(bindingId: string, eventId: string, actor?: 'user'): Promise<HealthEventRecord>;
   recordDetectSuite(input: DetectSuiteInput, actor?: 'user'): Promise<void>;
   recordSessionCheck(bindingId: string, outcome: SessionCheckOutcome): Promise<void>;
   recordRunOutcome(input: RunOutcomeInput): Promise<void>;
@@ -432,6 +435,24 @@ export function createHealth(d: HealthDeps): HealthBundle {
       flush(bus);
       return result;
     },
+
+    async undoManualEvent(bindingId, eventId, actor = 'user') {
+      const b = mustGet(bindingId);
+      const target = repos.events.list({ bindingId, types: ['manual.upload', 'manual.note'], limit: 10_000 }).find((e) => e.id === eventId);
+      if (!target) throw new PvError('INPUT_INVALID', 'Chỉ hoàn tác được khai báo "Đã upload" hoặc "Ghi chú" của kênh này', { eventId });
+      if (d.clock.nowMs() - Date.parse(target.recordedAt) > UNDO_WINDOW_MS) throw new PvError('INPUT_INVALID', 'Đã quá thời gian hoàn tác', { eventId });
+      const already = repos.events.list({ bindingId, types: ['manual.note'], limit: 10_000 }).some((e) => e.payload.undoOf === eventId);
+        if (target.payload.undoOf) throw new PvError('INPUT_INVALID', 'Không hoàn tác sự kiện bù', { eventId });
+      if (already) throw new PvError('INPUT_INVALID', 'Sự kiện đã được hoàn tác', { eventId });
+      const { result, bus } = policy.transact(() => {
+        const ev = policy.recordEvent(b.id, 'manual.note', { undoOf: eventId, undoType: target.type, note: 'Hoàn tác khai báo' });
+        d.audit.append({ actorType: actor, action: 'event.undo', targetType: 'binding', targetId: b.id, detail: { eventId, undoEventId: ev.id } });
+          return ev;
+        });
+        readiness.invalidate(bindingId);
+        flush(bus);
+        return result;
+      },
 
     async recordDetectSuite(input, actor = 'user') {
       const parsed = DetectSuiteInputSchema.safeParse(input);

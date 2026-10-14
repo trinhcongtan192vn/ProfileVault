@@ -1,0 +1,1 @@
+{ "type": "object", "required": ["studioLanguage"], "properties": { "studioLanguage": { "const": "en" }, "channelHandle": { "type": "string" } } }

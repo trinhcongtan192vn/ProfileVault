@@ -1,1 +1,3 @@
-export const PACKAGE_NAME = '@sctech/profilevault-pack-youtube';
+import { sessionCheck } from './flows/session-check.js';
+export { sessionCheck };
+export const flows = [sessionCheck];

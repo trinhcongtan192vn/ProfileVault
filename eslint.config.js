@@ -39,10 +39,17 @@ export default tseslint.config(
   },
   {
     // Test: cho phép `res.json() as T` và `expect.any(...)` (any) — không áp cho mã sản phẩm
-    files: ['**/test/**/*.ts'],
+    files: ['**/test/**/*.ts', '**/test/**/*.tsx'],
     rules: {
       '@typescript-eslint/no-unnecessary-type-assertion': 'off',
       '@typescript-eslint/no-unsafe-assignment': 'off',
+    },
+  },
+  {
+    files: ['apps/dashboard/**/*.ts', 'apps/dashboard/**/*.tsx'],
+    languageOptions: {
+      globals: { ...globals.browser },
+      parserOptions: { project: ['./apps/dashboard/tsconfig.json'] },
     },
   },
   {

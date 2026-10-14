@@ -8,6 +8,8 @@ import type { HealthService } from '@sctech/profilevault-health';
 export interface RunnerFacade {
   listJobs(filter: { status?: string; clientId?: string; bindingId?: string; limit?: number }): JobRecord[];
   getRun(runId: string): RunRecord | undefined;
+  /** Run đang `needs_user` (trang Chờ bạn). */
+  listNeedsUser(): RunRecord[];
   cancelRun(runId: string, actor: string): Promise<void>;
   resolveGate(runId: string, result: { choice: string; note?: string }, actor: 'user'): Promise<void>;
   artifactPath(runId: string, name: string): string | undefined;
@@ -36,6 +38,9 @@ export class NoRunner implements RunnerFacade {
   }
   getRun(): RunRecord | undefined {
     return undefined;
+  }
+  listNeedsUser(): RunRecord[] {
+    return [];
   }
   async cancelRun(): Promise<void> {
     notReady();

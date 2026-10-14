@@ -2,9 +2,11 @@
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
     "rootDir": "src",
+    "lib": ["ES2023", "DOM"],
     "outDir": "dist"
   },
   "include": [
     "src/**/*"
-  ]
+  ],
+  "references": [{ "path": "../contract" }, { "path": "../core" }, { "path": "../db" }, { "path": "../fury-client" }, { "path": "../health" }, { "path": "../../tools/eslint-plugin-pv" }]
 }

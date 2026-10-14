@@ -8,6 +8,9 @@
     "src/**/*"
   ],
   "references": [
+    { "path": "../../packages/runner" },
+    { "path": "../../packs/generic" },
+    { "path": "../../packs/youtube" },
     {
       "path": "../../packages/contract"
     },
