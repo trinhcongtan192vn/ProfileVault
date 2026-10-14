@@ -168,3 +168,7 @@ body:has(.setup-page) { min-width: 320px; }
 .setup-page input { display: block; width: min(100%, 420px); }
 .setup-page progress { width: 100%; }
 
+.choice-list { display: flex; flex-direction: column; gap: 6px; margin: 8px 0; }
+.choice { display: flex; gap: 10px; align-items: center; padding: 8px 12px; border: 1px solid var(--border); border-radius: 6px; cursor: pointer; }
+.choice.active { border-color: var(--primary); }
+.choice input { margin: 0; }

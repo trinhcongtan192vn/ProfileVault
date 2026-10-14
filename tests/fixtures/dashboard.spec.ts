@@ -20,7 +20,7 @@ test('dashboard: wizard 2 kênh, upload/undo/SSE, CAPTCHA, các trang và CSV', 
     await expect(page.getByRole('heading', { name: 'Tổng quan', exact: true })).toBeVisible();
     for (let n = 1; n <= 2; n++) {
       await page.goto(`${ctx.gatewayUrl}/bindings/new`);
-      await page.locator('select[size]').selectOption(`p${n}`); await page.getByRole('button', { name: 'Tiếp', exact: true }).click();
+      await page.getByRole('radio', { name: `(p${n})` }).click(); await page.getByRole('button', { name: 'Tiếp', exact: true }).click();
       await page.getByLabel('ID tài khoản').fill(`UCFIXTURECHANNEL${n}`);
       await page.getByLabel('Tên hiển thị').fill(`Kênh fixture ${n}`); await page.getByLabel('Thị trường').fill('DE');
       await page.getByRole('button', { name: 'Tiếp', exact: true }).click(); await page.getByRole('button', { name: 'Gắn kênh (L0)', exact: true }).click();

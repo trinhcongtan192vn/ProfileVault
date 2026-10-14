@@ -55,6 +55,9 @@ export default function NewBinding() {
   });
   const consistency = useQuery({ queryKey: binding ? qk.consistency(binding.id) : ['none'], queryFn: () => get<ConsistencyView>(`/internal/bindings/${binding!.id}/consistency`), enabled: !!binding && step === 5 });
   const accErr = validateAccount(acc);
+  const unbound = (profiles.data?.profiles ?? []).filter((p) => !p.bound);
+  // Chỉ có một profile chưa gắn → chọn sẵn
+  const chosenProfile = profileId || (unbound.length === 1 ? (unbound[0]?.id ?? '') : '');
 
   return (
     <div>
@@ -76,17 +79,29 @@ export default function NewBinding() {
           ) : (
             <>
               <p>Chọn profile Fury đã tạo cho kênh (persona Windows, proxy ISP/residential tĩnh đúng thị trường, đã đăng nhập email của kênh).</p>
-              <select size={8} className="wide" value={profileId} onChange={(e) => setProfileId(e.target.value)}>
-                {(profiles.data?.profiles ?? [])
-                  .filter((p) => !p.bound)
-                  .map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.name} ({p.id}) {p.tags.join(', ')}
-                    </option>
+              {unbound.length === 0 ? (
+                <p className="muted">Không còn profile Fury nào chưa gắn. Tạo profile trong Fury rồi tải lại trang.</p>
+              ) : (
+                <div className="choice-list" role="radiogroup" aria-label="Profile Fury">
+                  {unbound.map((p) => (
+                    <label key={p.id} className={`choice${chosenProfile === p.id ? ' active' : ''}`}>
+                      <input type="radio" name="fury-profile" value={p.id} checked={chosenProfile === p.id} onChange={() => setProfileId(p.id)} />
+                      <span>
+                        <strong>{p.name}</strong> <span className="muted">({p.id}){p.tags.length > 0 ? ` · ${p.tags.join(', ')}` : ''}</span>
+                      </span>
+                    </label>
                   ))}
-              </select>
+                </div>
+              )}
               <div className="actions">
-                <button className="primary" disabled={!profileId} onClick={() => setStep(1)}>
+                <button
+                  className="primary"
+                  disabled={!chosenProfile}
+                  onClick={() => {
+                    setProfileId(chosenProfile);
+                    setStep(1);
+                  }}
+                >
                   Tiếp
                 </button>
               </div>
