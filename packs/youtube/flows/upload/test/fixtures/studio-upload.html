@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Studio upload fixture</title>
+<style>[hidden]{display:none!important}</style>
+<script>
+/*FIXTURE*/
+window.__FIXTURE__ = window.__FIXTURE__ || {};
+</script>
+</head>
+<body>
+<!-- Trang giả lập YouTube Studio (English) cho flow youtube/upload. Cấu trúc ngữ nghĩa theo data/locators.en.json.
+     TODO(SPIKE-P4): cập nhật cùng locator khi chốt trên kênh test. -->
+<main id="app"></main>
+<script>
+(() => {
+  const F = window.__FIXTURE__;
+  const app = document.getElementById('app');
+  const path = location.pathname;
+  const videos = JSON.parse(localStorage.getItem('videos') || '[]').concat(F.existing || []);
+  const h = (html) => { app.innerHTML = html; };
+
+  // ---- Content: danh sách video ----
+  if (/\/videos\/upload$/.test(path)) {
+    h('<h1>Channel content</h1><table>' + videos.map((v) => `<tr><td><a id="video-title">${v.title}</a></td><td id="date-cell">${v.date || ''}</td></tr>`).join('') + '</table>');
+    return;
+  }
+
+  // ---- Trang sửa video ----
+  const edit = /^\/video\/([^/]+)\/edit$/.exec(path);
+  if (edit) {
+    const v = videos.find((x) => x.id === edit[1]);
+    if (!v) { h('<h1>Video not found</h1>'); return; }
+    h(`<h1>Video details</h1><div role="textbox" contenteditable="true" aria-label="Add a title that describes your video (type @ to mention a channel)">${v.title}</div><span id="visibility-text">${v.visibility}</span>`);
+    return;
+  }
+
+  // ---- Dashboard + hộp thoại upload ----
+  h(`<h1>Channel dashboard</h1>
+  <button id="create">Create</button>
+  <div id="menu" role="menu" hidden><div role="menuitem" tabindex="0" id="upload-item">Upload videos</div></div>
+  <div id="pick" role="dialog" aria-label="Upload videos" hidden><input type="file" name="Filedata" id="filedata"></div>
+  <div id="details" role="dialog" aria-label="Video details" hidden>
+    <section id="step-details">
+      <div role="textbox" contenteditable="true" id="title" aria-label="Add a title that describes your video (type @ to mention a channel)"></div>
+      <div role="textbox" contenteditable="true" id="description" aria-label="Tell viewers about your video (type @ to mention a channel)"></div>
+      <p>Video link <a class="ytcp-video-info" id="video-link" href="https://youtu.be/${F.videoId || 'FIXVIDEO01'}">https://youtu.be/${F.videoId || 'FIXVIDEO01'}</a></p>
+      <input type="file" id="file-loader" aria-label="Upload thumbnail">
+      <button id="playlists">Select playlists</button>
+      <div id="playlist-box" hidden>${(F.playlists || ['Tutorials']).map((p) => `<label><input type="checkbox" class="pl" value="${p}">${p}</label>`).join('')}<button id="pl-done">Done</button></div>
+      <label><input type="radio" name="mfk" value="yes">Yes, it's made for kids</label>
+      <label><input type="radio" name="mfk" value="no">No, it's not made for kids</label>
+      <button id="more">Show more</button>
+      <div id="more-box" hidden>
+        <input aria-label="Tags" id="tags">
+        <button id="lang">Video language</button>
+        <div id="lang-list" role="listbox" hidden><div role="option" tabindex="0">English</div><div role="option" tabindex="0">Vietnamese</div></div>
+        <fieldset><legend>Altered content</legend><label><input type="radio" name="altered" value="yes">Yes</label><label><input type="radio" name="altered" value="no">No</label></fieldset>
+      </div>
+    </section>
+    <section id="step-elements" hidden>
+      <button id="add-subs">Add subtitles</button>
+      <input type="file" id="captions-file" accept=".srt,.vtt" hidden>
+      <ul id="captions-list"></ul>
+    </section>
+    <section id="step-checks" hidden><p>No issues found</p></section>
+    <section id="step-visibility" hidden>
+      <label><input type="radio" name="vis" value="Private">Private</label>
+      <label><input type="radio" name="vis" value="Unlisted">Unlisted</label>
+      <label><input type="radio" name="vis" value="Public">Public</label>
+      <label><input type="radio" name="vis" value="Schedule">Schedule</label>
+    </section>
+    <span class="progress-label" id="upload-progress">Uploading 0%</span>
+    <div class="error-area" id="upload-error"></div>
+    <button id="next">Next</button>
+    <button id="save" aria-label="Save">${F.saveLabel || 'Save'}</button>
+  </div>`);
+  const $ = (id) => document.getElementById(id);
+  const steps = ['step-details', 'step-elements', 'step-checks', 'step-visibility'];
+  let step = 0;
+  $('create').onclick = () => { $('menu').hidden = false; };
+  $('upload-item').onclick = () => { $('menu').hidden = true; $('pick').hidden = false; };
+  $('filedata').onchange = (e) => {
+    const name = (e.target.files[0] && e.target.files[0].name) || 'video';
+    $('pick').hidden = true; $('details').hidden = false;
+    $('title').textContent = name.replace(/\.[^.]+$/, '');
+    setTimeout(() => {
+      if (F.uploadError) { $('upload-error').textContent = F.uploadError; return; }
+      $('upload-progress').textContent = 'Uploading 60%';
+      setTimeout(() => { $('upload-progress').textContent = 'Upload complete'; }, 150);
+    }, 100);
+  };
+  $('playlists').onclick = () => { $('playlist-box').hidden = false; };
+  $('pl-done').onclick = () => { $('playlist-box').hidden = true; };
+  $('more').onclick = () => { $('more-box').hidden = false; };
+  $('lang').onclick = () => { $('lang-list').hidden = false; };
+  for (const o of document.querySelectorAll('[role=option]')) o.onclick = () => { $('lang').textContent = o.textContent; $('lang-list').hidden = true; };
+  $('add-subs').onclick = () => { $('captions-file').hidden = false; };
+  $('captions-file').onchange = (e) => { const li = document.createElement('li'); li.textContent = (e.target.files[0] && e.target.files[0].name) || ''; $('captions-list').appendChild(li); };
+  $('next').onclick = () => {
+    if (F.hideNext) return;
+    $(steps[step]).hidden = true; step = Math.min(step + 1, steps.length - 1); $(steps[step]).hidden = false;
+    if (step === 1 && F.captionLanguage) { /* ngôn ngữ phụ đề hiển thị khi tải lên */ }
+  };
+  $('save').onclick = () => {
+    const vis = (document.querySelector('input[name=vis]:checked') || {}).value || 'Draft';
+    const saved = JSON.parse(localStorage.getItem('videos') || '[]');
+    saved.push({ id: F.videoId || 'FIXVIDEO01', title: $('title').textContent, visibility: vis, date: 'Oct 15, 2026' });
+    localStorage.setItem('videos', JSON.stringify(saved));
+    window.__saved = (window.__saved || 0) + 1;
+    $('details').hidden = true;
+  };
+})();
+</script>
+</body>
+</html>

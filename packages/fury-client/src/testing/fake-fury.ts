@@ -243,7 +243,8 @@ export class FakeFury {
         this.open.set(id, { open: true, via: 'api', since: new Date().toISOString() });
         const cdp = (body as { cdp?: unknown } | undefined)?.cdp === true;
         const pid = Number(result.sessionRef) || 40000;
-        return ok(cdp ? { pid, relay_port: 51834, debug_port: 51835, ws_endpoint: result.cdpEndpoint, ws: { puppeteer: result.cdpEndpoint, selenium: result.cdpEndpoint } } : { pid, relay_port: 51834 });
+        const probe_url = `http://127.0.0.1:51834/fake-${encodeURIComponent(id)}/probe/`;
+        return ok(cdp ? { pid, relay_port: 51834, probe_url, debug_port: 51835, ws_endpoint: result.cdpEndpoint, ws: { puppeteer: result.cdpEndpoint, selenium: result.cdpEndpoint } } : { pid, relay_port: 51834, probe_url });
       });
     }
     if (method === 'POST' && url.pathname === '/v1/profiles/stop') {

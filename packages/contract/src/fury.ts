@@ -64,6 +64,8 @@ export type FuryProfileStatus = z.infer<typeof FuryProfileStatusSchema>;
 export const FuryLaunchResultSchema = z.object({
   cdpEndpoint: z.string().min(1),
   sessionRef: z.string(),
+  /** Trang probe detect-suite của profile qua relay loopback (Fury trả kèm kết quả mở). */
+  probeUrl: z.string().optional(),
 });
 export type FuryLaunchResult = z.infer<typeof FuryLaunchResultSchema>;
 

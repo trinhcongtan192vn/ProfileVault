@@ -11,6 +11,8 @@ export interface FlowContext<I = unknown> {
   fail(code: string, message: string, detail?: Record<string, unknown>): never;
   log(message: string, data?: Record<string, unknown>): void;
   artifact(name: string, data: Buffer | string): Promise<string>;
+  /** Thông tin lần mở profile của Fury (vd trang probe). */
+  readonly fury: { probeUrl?: string };
 }
 export interface FlowDefinition<I = unknown, O = unknown> { manifest: FlowManifest; input: Validator<I>; output: Validator<O>; run(ctx: FlowContext<I>): Promise<O> }
 export function defineFlow<I, O>(manifest: Omit<FlowManifest, 'modes' | 'countsAsUpload' | 'errors'> & Partial<Pick<FlowManifest, 'modes' | 'countsAsUpload' | 'errors'>>, input: Validator<I>, output: Validator<O>, run: (ctx: FlowContext<I>) => Promise<O>): FlowDefinition<I, O> {

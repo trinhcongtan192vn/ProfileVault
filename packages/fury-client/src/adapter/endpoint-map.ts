@@ -151,7 +151,7 @@ const RawPersona = z
 const RawProxy = z.object({ id: z.string().min(1), last_ip: z.string().nullish(), last_country: z.string().nullish(), last_timezone: z.string().nullish() });
 
 const RawLaunch = z
-  .object({ pid: z.number().int().optional(), ws_endpoint: z.string().min(1).optional() })
+  .object({ pid: z.number().int().optional(), ws_endpoint: z.string().min(1).optional(), probe_url: z.string().optional() })
   .passthrough();
 
 const RawExit = z
@@ -271,7 +271,7 @@ export const DEFAULT_ENDPOINT_MAP: FuryEndpointMap = {
       const l = parseWith('launch', envelope(RawLaunch), raw).data;
       // Team server có thể cấm CDP theo vai trò: trình duyệt vẫn mở nhưng không có ws_endpoint
       if (!l.ws_endpoint) throw new PvError('FURY_CAPABILITY_MISSING', 'Fury mở profile nhưng không cấp CDP (team server có thể cấm theo vai trò)', { capability: 'launch', reason: 'cdp_not_granted' });
-      return { cdpEndpoint: l.ws_endpoint, sessionRef: l.pid !== undefined ? String(l.pid) : '' };
+      return { cdpEndpoint: l.ws_endpoint, sessionRef: l.pid !== undefined ? String(l.pid) : '', ...(l.probe_url ? { probeUrl: l.probe_url } : {}) };
     },
   },
   stop: {

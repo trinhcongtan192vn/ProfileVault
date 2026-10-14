@@ -15,9 +15,14 @@ import { Scheduler } from './scheduler.js';
 import { CpuLoad } from './cpu-load.js';
 
 const TERMINAL = new Set<RunStatus>(['done', 'failed', 'cancelled']);
+/** Flow generic: domain của nền tảng binding + domain loopback của chính flow (vd trang probe). Flow nền tảng: manifest. */
+function sitesFor(flowId: string, manifest: string[], platformSites: string[] | undefined): string[] {
+  if (!flowId.startsWith('generic/')) return manifest;
+  return [...new Set([...(platformSites ?? manifest), ...manifest.filter((h) => h === '127.0.0.1' || h === 'localhost')])];
+}
 /** Setting chỉ người đặt (dashboard): spike P4 đạt → mở khóa flow có chế độ L2/L3. */
 export const P4_SETTING = 'spike.p4Passed';
-interface ActiveRun { promise: Promise<void>; page?: Page; browser?: Browser; owned: boolean; cancel?: PvError; gate?: { resolve(value: GateResult): void; reject(error: Error): void }; gateSince?: number; gateTime: number; started: number; pauseStep?: () => void; resumeStep?: () => void }
+interface ActiveRun { probeUrl?: string; promise: Promise<void>; page?: Page; browser?: Browser; owned: boolean; cancel?: PvError; gate?: { resolve(value: GateResult): void; reject(error: Error): void }; gateSince?: number; gateTime: number; started: number; pauseStep?: () => void; resumeStep?: () => void }
 export interface RunnerDeps {
   database: Database; clock: Clock; config: Config; settings: SettingsRepo; audit: AuditRepo; bus: EventBus; health: HealthService; fury: FuryClient; logger: Logger; runsDir: string; loader: PackLoader;
   timers?: Timers; connect?: (endpoint: string) => Promise<Browser>; freeRamMb?: () => number; cpuBusy?: () => boolean; random?: () => number;
@@ -187,12 +192,12 @@ export class Runner {
     this.status(id, 'launching');
     // TODO(SPIKE-P4): xác minh vòng đời Fury CDP; connector tiêm cho fixture.
     const launched = await this.d.fury.launch(b.furyProfileId, { cdp: true });
-    active.owned = true; this.store.patchRun(id, { launchedByRun: true });
+    active.owned = true; active.probeUrl = launched.probeUrl; this.store.patchRun(id, { launchedByRun: true });
     active.browser = await (this.d.connect ?? ((endpoint) => chromium.connectOverCDP(endpoint)))(launched.cdpEndpoint);
     const context = active.browser.contexts()[0]; if (!context) throw new PvError('INTERNAL', 'CDP không có context');
     active.page = await context.newPage(); active.page.setDefaultTimeout(120_000);
     const { flow } = this.d.loader.assertEnabled(run.flowId);
-    const sites = run.flowId.startsWith('generic/') ? this.platformPack(b.platform)?.manifest.generic?.sites ?? flow.manifest.site : flow.manifest.site;
+    const sites = sitesFor(run.flowId, flow.manifest.site, this.platformPack(b.platform)?.manifest.generic?.sites);
     await active.page.route('**/*', async (route) => {
       const request = route.request();
       if (request.isNavigationRequest()) {
@@ -314,8 +319,9 @@ export class Runner {
       const context: FlowContext = {
         input: flow.input.parse(this.store.input(run.jobId)), binding, mode: job.mode, state: cp.state,
         get page() { return a.page!; },
-        get ui() { return new SafeUi({ page: a.page!, verifiedFiles, sites: run.flowId.startsWith('generic/') ? platform?.manifest.generic?.sites ?? flow.manifest.site : flow.manifest.site, forbidden: pack.forbidden, timers: thisTimers, actionDelayMs: humanize?.actionDelayMs, typingDelayMs: humanize?.typingDelayMs, denied: (detail) => audit.append({ actorType: 'system', action: 'run.forbidden', targetType: 'run', targetId: id, detail }) }); },
+        get ui() { return new SafeUi({ page: a.page!, verifiedFiles, sites: sitesFor(run.flowId, flow.manifest.site, platform?.manifest.generic?.sites), forbidden: pack.forbidden, timers: thisTimers, actionDelayMs: humanize?.actionDelayMs, typingDelayMs: humanize?.typingDelayMs, denied: (detail) => audit.append({ actorType: 'system', action: 'run.forbidden', targetType: 'run', targetId: id, detail }) }); },
         step, humanGate: gate,
+        get fury() { return { ...(a.probeUrl ? { probeUrl: a.probeUrl } : {}) }; },
         fail: (code, message, detail) => { throw new PvError(code, message, detail); },
         log: (message) => log(message),
         artifact: async (name, data) => { const file = this.artifactPath(id, name); if (!file) throw new PvError('FILE_NOT_ALLOWED'); writeFileSync(file, data); return file; },

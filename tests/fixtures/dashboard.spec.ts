@@ -44,7 +44,7 @@ test('dashboard: wizard 2 kênh, upload/undo/SSE, CAPTCHA, các trang và CSV', 
     for (const route of ['/inbox', '/jobs', '/system', '/schedules', '/settings']) { await page.goto(ctx.gatewayUrl + route); await expect(page.locator('main h1').first()).toBeVisible(); }
     const csv = await page.request.get(`${ctx.gatewayUrl}/internal/export/events.csv?bindingId=${binding.id}`);
     expect(csv.ok()).toBe(true); expect(await csv.text()).toContain('manual.upload');
-    expect(ctx.runner.listFlows().filter((f) => f.status === 'enabled')).toHaveLength(2);
+    expect(ctx.runner.listFlows().filter((f) => f.status === 'enabled').map((f) => f.id).sort()).toEqual(['generic/open-and-wait', 'generic/probe', 'generic/read-page', 'generic/session-check', 'youtube/session-check', 'youtube/upload']);
     expect(errors).toEqual([]);
   } finally { await page.close(); await ctx.shutdown(); await fake.stop(); rmSync(dir, { recursive: true, force: true }); }
 });

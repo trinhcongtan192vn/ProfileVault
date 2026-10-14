@@ -4,3 +4,4 @@ export { PackLoader, type LoadedPack } from './pack-loader.js';
 export { RunStore } from './store.js';
 export { P4_SETTING, Runner, type RunnerDeps } from './runner.js';
 export { Scheduler, pickTimes } from './scheduler.js';
+export { locate } from './locate.js';

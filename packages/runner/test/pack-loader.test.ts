@@ -6,10 +6,10 @@ import { PackLoader } from '../src/pack-loader.js';
 const dirs: string[] = [];
 afterEach(() => { for (const d of dirs.splice(0)) rmSync(d, { recursive: true, force: true }); });
 describe('Nạp pack', () => {
-  it('pack chính thức lint sạch và công bố 2 flow M0', async () => {
+  it('pack chính thức lint sạch và công bố flow M0 + M1', async () => {
     const loader = new PackLoader(() => '0.2.23');
     await loader.load(path.resolve('packs/generic')); await loader.load(path.resolve('packs/youtube'));
-    expect(loader.listFlows().map((f) => [f.id, f.status])).toEqual([['generic/session-check', 'enabled'], ['youtube/session-check', 'enabled']]);
+    expect(loader.listFlows().map((f) => [f.id, f.status])).toEqual([['generic/session-check', 'enabled'], ['generic/probe', 'enabled'], ['generic/read-page', 'enabled'], ['generic/open-and-wait', 'enabled'], ['youtube/session-check', 'enabled'], ['youtube/upload', 'enabled']]);
     expect(() => loader.validateBinding('youtube', { studioLanguage: 'vi' })).toThrow();
   });
   it('raw interaction vô hiệu pack trước import và appApi không tương thích', async () => {

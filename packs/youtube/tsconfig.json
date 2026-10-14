@@ -2,10 +2,22 @@
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
     "rootDir": "src",
-    "outDir": "dist"
+    "outDir": "dist",
+    "lib": [
+      "ES2023",
+      "DOM"
+    ]
   },
   "include": [
-    "src/**/*", "data/*.json"
+    "src/**/*",
+    "data/*.json"
   ],
-  "references": [{ "path": "../../packages/contract" }, { "path": "../../packages/runner" }]
+  "references": [
+    {
+      "path": "../../packages/contract"
+    },
+    {
+      "path": "../../packages/runner"
+    }
+  ]
 }

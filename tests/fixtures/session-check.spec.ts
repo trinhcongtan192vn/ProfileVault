@@ -22,7 +22,7 @@ for (const scenario of [
     const ui = new class extends SafeUi {
       override async goto(url: string): Promise<void> { expect(url).toBe('https://studio.youtube.com/'); await super.goto(scenario.url); }
     }({ page, sites: ['studio.youtube.com', 'accounts.google.com'], timers: new FakeTimers() });
-    const ctx: FlowContext<Record<string, never>> = { input: {}, mode: null, binding, page, state: {}, ui, step: async (_name, fn) => fn(), humanGate: async () => { throw new Error('Session-check không dùng gate'); }, fail: (code) => { throw new Error(code); }, log() {}, artifact: async () => '' };
+    const ctx: FlowContext<Record<string, never>> = { input: {}, mode: null, binding, page, state: {}, ui, fury: {}, step: async (_name, fn) => fn(), humanGate: async () => { throw new Error('Session-check không dùng gate'); }, fail: (code) => { throw new Error(code); }, log() {}, artifact: async () => '' };
     expect((await youtube.run(ctx)).state).toBe(scenario.state);
     const genericResult = await generic.run(ctx);
     expect(genericResult.state).toBe(scenario.state === 'wrong_account' || scenario.state === 'unknown' ? 'logged_in' : scenario.state);
