@@ -9,6 +9,7 @@ export {
   parseScreen,
   quoteBigSeeds,
   type FuryPersonaInfo,
+  type FuryProxyExit,
   type EndpointSpec,
   type FuryCapability,
   type FuryEndpointMap,
@@ -33,3 +34,4 @@ export {
   type FuryInstallerOptions,
   type InstallerExec,
 } from './installer.js';
+export { DEFAULT_EXIT_LOOKUP, lookupUrl, parseExitLookup, type ExitLookupConfig, type ExitLookupResult } from './adapter/exit-lookup.js';

@@ -66,7 +66,7 @@ type FuryCapabilities = Record<
 
 Trường tùy chọn (`?`) có thể thiếu tùy nguồn; nơi dùng phải xử lý `undefined` thành trạng thái `unknown` (SPEC-02).
 
-## 4. Ánh xạ nguồn (đã xác minh SPIKE-P2 với Fury 0.3.22; **[SPIKE-P5]** còn mở)
+## 4. Ánh xạ nguồn (đã xác minh SPIKE-P2 và SPIKE-P5 với Fury 0.3.22)
 
 Automation API của Fury: bật khi `fury-agent serve` có biến môi trường `FURY_API_PORT` (quy ước 35000), chỉ nghe `127.0.0.1`, bearer token trong `<thư mục dữ liệu Fury>/api-token` (`%APPDATA%\Fury` hoặc `FURY_HOME`), từ chối request có `Origin`. Phản hồi `{ ok: true, data }`; lỗi `{ error, message }` (400 khi từ chối thao tác, 401 token, 403 Origin/Host, 404 route). Chỉ có 6 endpoint.
 
@@ -79,10 +79,10 @@ Automation API của Fury: bật khi `fury-agent serve` có biến môi trườn
 | `stop` | `POST /v1/profiles/stop` `{ id }` | native |
 | `getProfile` | Hàng trong `GET /v1/profiles` + `GET /v1/personas` (`os`, `gpu`, `screen` "W×H"). `timezone`/`languages` `null` = theo quốc gia exit (để trống). Geolocation: `overrides.geolocation {latitude, longitude}` → manual, không có → auto. `overrides.screen/gpu/cores/memory_gb` thắng persona. Chỉ lấy `proxy_id`, bỏ đối tượng `proxy` | fallback |
 | `seed` | `fp_seed` (i64 — vượt `Number.MAX_SAFE_INTEGER`, đổi sang chuỗi trước khi parse JSON) | native |
-| `checkExit` | **Không có** trong API công khai (app dùng IPC riêng) — chờ P5 | missing |
-| `asnType` | Không có — chờ P5 (`.mmdb` cục bộ hoặc xác nhận tay) | missing |
+| `checkExit` | API công khai không có (IPC `proxies.check` của app cần URL proxy có mật khẩu). Thay bằng **tra exit** (`config.fury.exitLookup`, mặc định ipinfo.io như Fury): profile không proxy (`proxy_id` null) → tra IP của máy; có proxy → `GET /v1/proxies`, chỉ đọc `id`, `last_ip`, `last_country`, `last_timezone` (bỏ host/username/password khi parse), rồi tra `last_ip` từ máy (không đi qua proxy). Không có `last_ip` → `ok: false, error: EXIT_UNKNOWN`; dịch vụ tra lỗi → `LOOKUP_FAILED` | fallback |
+| `asnType` | Nguồn tra miễn phí chỉ có số ASN + tên (`org: "AS3320 …"`), không có loại → `unknown`, người xác nhận ở Cài đặt → ASN (`asn_attestations`) | missing |
 
-Thiếu `checkExit`: lần kiểm proxy theo lịch ghi `ok = false, error = FURY_CAPABILITY_MISSING` và **không** phát `proxy.check_failed` (không có bằng chứng thì không phải cờ đỏ). Giao diện §3 giữ nguyên.
+Không có bằng chứng (`FURY_CAPABILITY_MISSING`, `EXIT_UNKNOWN`, `LOOKUP_FAILED`): lần kiểm ghi `ok = false` và **không** phát `proxy.check_failed`. Giới hạn: với profile có proxy, exit chỉ mới bằng lần Fury kiểm proxy gần nhất (Fury ghi `last_ip` khi người bấm kiểm proxy trong app hoặc lần mở đầu tiên); đổi exit âm thầm của proxy xoay chỉ thấy sau khi Fury kiểm lại. Tra exit gửi IP tới dịch vụ tra (giống Fury); tắt bằng `config.fury.exitLookup = null`. Giao diện §3 giữ nguyên.
 
 ## 5. Kết nối và cấu hình
 

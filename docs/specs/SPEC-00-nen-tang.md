@@ -104,7 +104,7 @@ Pack người dùng đặt ở `%APPDATA%\ProfileVault\extensions\flows\<pack>\`
 ```json
 {
   "gateway": { "host": "127.0.0.1", "port": 50410 },
-  "fury": { "apiBaseUrl": "http://127.0.0.1:${FURY_API_PORT}", "supportedVersions": ">=0.2.21 <0.4.0", "dataDir": null, "autoInstall": true },
+  "fury": { "apiBaseUrl": "http://127.0.0.1:${FURY_API_PORT}", "supportedVersions": ">=0.2.21 <0.4.0", "dataDir": null, "autoInstall": true, "exitLookup": { "selfUrl": "https://ipinfo.io/json", "ipUrl": "https://ipinfo.io/{ip}/json" } },
   "runner": { "maxConcurrentIdle": 6, "maxConcurrentBusy": 3, "ramPerProfileMb": 500, "profileBusyTimeoutMinutes": 360, "humanGateTimeoutHours": 24 },
   "limits": { "uploadsPerAccountPerDay": 10 },
   "retention": { "runArtifactsDays": 30, "dataMonths": 12 },

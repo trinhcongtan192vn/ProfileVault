@@ -101,7 +101,6 @@ Cập nhật sau mỗi feature (lệnh: `grep -rn --exclude-dir=dist "TODO(SPIKE
 
 | Spike | File | Nội dung |
 |---|---|---|
-| SPIKE-P5 | `packages/fury-client/src/adapter/endpoint-map.ts` | `checkExit: { source: 'missing' }` — API công khai không có kiểm exit; `meta.asnType` |
 
 ## 6. Thay đổi với `docs/`
 

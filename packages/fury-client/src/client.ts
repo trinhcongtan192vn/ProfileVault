@@ -30,6 +30,7 @@ export const FURY_TIMEOUTS_MS = {
   launch: 60_000,
   stop: 15_000,
   personas: 5_000,
+  proxies: 5_000,
 } as const;
 export type FuryTimeouts = { [K in keyof typeof FURY_TIMEOUTS_MS]: number };
 

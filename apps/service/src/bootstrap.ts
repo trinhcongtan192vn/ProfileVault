@@ -147,6 +147,7 @@ export async function bootstrap(opts: BootstrapOptions = {}): Promise<ServiceCon
         baseUrl: loaded.config.fury.apiBaseUrl,
         supportedVersions: loaded.config.fury.supportedVersions,
         getToken: furyTokenSource(secrets, tokenFile),
+        exitLookup: loaded.config.fury.exitLookup,
         clock,
         timers: opts.timers,
         logger: logger.child({ pkg: 'fury-client' }),

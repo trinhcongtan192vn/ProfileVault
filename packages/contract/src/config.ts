@@ -16,8 +16,13 @@ export const ConfigSchema = z.object({
       dataDir: z.string().nullable().default(null),
       /** Tự cài Fury bản đã ghim khi máy chưa có (SPEC-00 §11.1). */
       autoInstall: z.boolean().default(true),
+      /** Tra exit (SPEC-01 §4, SPIKE-P5): IP của máy / một IP. `null` = tắt. Mặc định ipinfo.io như Fury. */
+      exitLookup: z
+        .object({ selfUrl: z.url(), ipUrl: z.string().includes('{ip}') })
+        .nullable()
+        .default({ selfUrl: 'https://ipinfo.io/json', ipUrl: 'https://ipinfo.io/{ip}/json' }),
     })
-    .default({ apiBaseUrl: 'http://127.0.0.1:${FURY_API_PORT}', supportedVersions: '>=0.2.21 <0.4.0', dataDir: null, autoInstall: true }),
+    .default({ apiBaseUrl: 'http://127.0.0.1:${FURY_API_PORT}', supportedVersions: '>=0.2.21 <0.4.0', dataDir: null, autoInstall: true, exitLookup: { selfUrl: 'https://ipinfo.io/json', ipUrl: 'https://ipinfo.io/{ip}/json' } }),
   runner: z
     .object({
       maxConcurrentIdle: z.number().int().min(0).default(6),

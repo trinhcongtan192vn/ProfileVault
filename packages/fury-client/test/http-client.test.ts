@@ -229,3 +229,48 @@ describe('HttpFuryClient (SPEC-01)', () => {
     await expectPv(client().stop('nope'), 'INPUT_INVALID');
   });
 });
+
+describe('checkExit khi Fury không có kiểm exit (SPIKE-P5)', () => {
+  const LOOKUP = { selfUrl: 'http://lookup.test/json', ipUrl: 'http://lookup.test/{ip}/json' };
+  function lookupFetch(answers: Record<string, { status?: number; body: unknown }>, seen: string[] = []): typeof fetch {
+    return async (input, init) => {
+      const url = input instanceof Request ? input.url : input.toString();
+      if (url.startsWith('http://lookup.test/')) {
+        seen.push(url);
+        const a = answers[url];
+        if (!a) return new Response('{}', { status: 404 });
+        return new Response(JSON.stringify(a.body), { status: a.status ?? 200 });
+      }
+      return fetch(input, init);
+    };
+  }
+
+  it('profile không proxy → tra IP của máy; có proxy → tra last_ip Fury ghi; không lộ mật khẩu proxy', async () => {
+    const seen: string[] = [];
+    fake.setExit('p1', { ip: '198.51.100.7', country: 'de', timezone: 'Europe/Berlin' });
+    const c = client({
+      exitLookup: LOOKUP,
+      fetch: lookupFetch(
+        {
+          'http://lookup.test/json': { body: { ip: '203.0.113.9', city: 'Hanoi', country: 'VN', timezone: 'Asia/Bangkok', org: 'AS45899 VNPT Corp' } },
+          'http://lookup.test/198.51.100.7/json': { body: { ip: '198.51.100.7', city: 'Frankfurt am Main', country: 'DE', timezone: 'Europe/Berlin', org: 'AS3320 Deutsche Telekom AG' } },
+        },
+        seen,
+      ),
+    });
+    expect(await c.checkExit('p2')).toMatchObject({ ok: true, ip: '203.0.113.9', country: 'VN', city: 'Hanoi', timezone: 'Asia/Bangkok', asn: 45899, asnOrg: 'VNPT Corp', asnType: 'unknown' });
+    const viaProxy = await c.checkExit('p1');
+    expect(viaProxy).toMatchObject({ ok: true, ip: '198.51.100.7', country: 'DE', asn: 3320, asnOrg: 'Deutsche Telekom AG' });
+    expect(JSON.stringify(viaProxy)).not.toContain('secret-pass');
+    expect(seen).toEqual(['http://lookup.test/json', 'http://lookup.test/198.51.100.7/json']);
+    expect((await c.capabilities()).checkExit).toBe('fallback');
+  });
+
+  it('Fury chưa kiểm proxy → EXIT_UNKNOWN; dịch vụ tra lỗi → LOOKUP_FAILED; tắt tra exit → FURY_CAPABILITY_MISSING', async () => {
+    const c = client({ exitLookup: LOOKUP, fetch: lookupFetch({ 'http://lookup.test/json': { status: 500, body: {} } }) });
+    expect(await c.checkExit('p1')).toMatchObject({ ok: false, error: 'EXIT_UNKNOWN' });
+    expect(await c.checkExit('p2')).toMatchObject({ ok: false, error: 'LOOKUP_FAILED' });
+    await expectPv(client().checkExit('p2'), 'FURY_CAPABILITY_MISSING');
+    expect((await client().capabilities()).checkExit).toBe('missing');
+  });
+});

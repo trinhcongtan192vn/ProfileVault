@@ -13,6 +13,9 @@ export interface ProxyCheckDeps {
   logger: Logger;
 }
 
+/** Lỗi do thiếu nguồn kiểm (không phải proxy hỏng): không phát cờ (SPIKE-P5). */
+const NO_EVIDENCE = new Set(['FURY_CAPABILITY_MISSING', 'EXIT_UNKNOWN', 'LOOKUP_FAILED']);
+
 /** Kiểm exit proxy qua Fury, không mở trình duyệt (SPEC-02 §5, §7; PRD F3). */
 export class ProxyCheckService {
   constructor(private readonly d: ProxyCheckDeps) {}
@@ -55,8 +58,8 @@ export class ProxyCheckService {
     this.d.policy.onChanged?.(binding.id);
 
     if (!exit.ok) {
-      // Fury không có nguồn kiểm exit (API công khai 0.3.22 — TODO(SPIKE-P5)): không có bằng chứng, không phải cờ đỏ
-      if (check.error === 'FURY_CAPABILITY_MISSING') return check;
+      // Thiếu nguồn kiểm (Fury chưa kiểm proxy, dịch vụ tra lỗi, tra exit tắt): không có bằng chứng, không phải cờ đỏ
+      if (check.error && NO_EVIDENCE.has(check.error)) return check;
       this.d.policy.recordEvent(binding.id, 'proxy.check_failed', { error: check.error, proxyCheckId: check.id });
       return check;
     }

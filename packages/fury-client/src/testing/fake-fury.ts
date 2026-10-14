@@ -41,7 +41,7 @@ export interface FakeExit {
   error?: string;
 }
 
-export type FakeCapability = 'health' | 'listProfiles' | 'personas' | 'launch' | 'stop' | 'checkExit';
+export type FakeCapability = 'health' | 'listProfiles' | 'personas' | 'proxies' | 'launch' | 'stop' | 'checkExit';
 
 export interface RecordedRequest {
   method: string;
@@ -207,6 +207,31 @@ export class FakeFury {
         return ok([...seen.values()]);
       });
     }
+    if (method === 'GET' && url.pathname === '/v1/proxies') {
+      // Như Fury chế độ cục bộ: trả cả host/username/password; last_* = exit kịch bản của profile dùng proxy
+      return route('proxies', () => {
+        const rows = new Map<string, unknown>();
+        for (const p of this.profiles.values()) {
+          if (!p.proxy || rows.has(p.proxy.id)) continue;
+          const exit = this.exits.get(p.id);
+          rows.set(p.proxy.id, {
+            id: p.proxy.id,
+            name: p.proxy.id,
+            kind: 'socks5',
+            host: p.proxy.host ?? 'exit.example',
+            port: 1080,
+            username: p.proxy.username ?? null,
+            password: p.proxy.password ?? null,
+            last_ip: exit?.ip ?? null,
+            last_country: exit?.country ?? null,
+            last_timezone: exit?.timezone ?? null,
+            last_location: null,
+            rotate_url: null,
+          });
+        }
+        return ok([...rows.values()]);
+      });
+    }
     if (method === 'POST' && url.pathname === '/v1/profiles/start') {
       return route('launch', async () => {
         if (!this.profiles.has(id)) return failed(`no profile ${id}`);
@@ -229,7 +254,7 @@ export class FakeFury {
         return ok({});
       });
     }
-    // Chỉ cho test: Fury thật KHÔNG có route này (TODO(SPIKE-P5)); dùng với TEST_ENDPOINT_MAP
+    // Chỉ cho test: Fury thật KHÔNG có route này (SPIKE-P5: dùng tra exit); dùng với TEST_ENDPOINT_MAP
     if (method === 'POST' && url.pathname === TEST_CHECK_EXIT_PATH) {
       return route('checkExit', () => {
         if (!this.profiles.has(id)) return failed(`no profile ${id}`);
@@ -262,7 +287,7 @@ export class FakeFury {
   }
 }
 
-/** Route kiểm exit chỉ có trong FakeFury (Fury thật chưa có — TODO(SPIKE-P5)). */
+/** Route kiểm exit chỉ có trong FakeFury (Fury thật không có — SPIKE-P5). */
 export const TEST_CHECK_EXIT_PATH = '/v1/test/check-exit';
 
 /** Bộ ánh xạ thật + checkExit trỏ route test, cho test Health/Gateway cần kịch bản exit. */

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { PvError } from '@sctech/profilevault-contract';
-import { DEFAULT_ENDPOINT_MAP, isSupportedVersion, normalizeVersion, parseExitInfo, parseScreen, quoteBigSeeds, type EndpointSpec } from '../src/index.js';
+import { DEFAULT_ENDPOINT_MAP, isSupportedVersion, normalizeVersion, parseExitInfo, parseExitLookup, parseScreen, quoteBigSeeds, type EndpointSpec } from '../src/index.js';
 
 describe('isSupportedVersion (SPEC-01 §6)', () => {
   const range = '>=0.2.21 <0.4.0';
@@ -94,7 +94,7 @@ describe('bộ ánh xạ endpoint Fury 0.3.22 (SPIKE-P2)', () => {
       sessionRef: '40213',
     });
     expect(() => launch.parse({ ok: true, data: { pid: 1, relay_port: 2 } }, ctx())).toThrow(/không cấp CDP/);
-    expect(DEFAULT_ENDPOINT_MAP.checkExit.source).toBe('missing'); // TODO(SPIKE-P5)
+    expect(DEFAULT_ENDPOINT_MAP.checkExit.source).toBe('missing'); // SPIKE-P5: tra exit thay thế
   });
 
   it('parseExitInfo (cho nguồn kiểm exit sau P5): chuẩn hóa quốc gia, asnType lạ → unknown, lỗi → ok=false', () => {
@@ -110,5 +110,20 @@ describe('bộ ánh xạ endpoint Fury 0.3.22 (SPIKE-P2)', () => {
     });
     expect(parseExitInfo({ ip: '1.2.3.4', asnType: 'weird' }, now)).toMatchObject({ asnType: 'unknown' });
     expect(parseExitInfo({ error: 'proxy down' }, now)).toMatchObject({ ok: false, error: 'proxy down' });
+  });
+});
+
+describe('tra exit (SPIKE-P5)', () => {
+  it('ipinfo: org "AS… tên" → asn + asnOrg; asn riêng; quốc gia viết hoa', () => {
+    expect(parseExitLookup({ ip: '1.2.3.4', country: 'de', org: 'AS3320 Deutsche Telekom AG' })).toEqual({ ip: '1.2.3.4', country: 'DE', asn: 3320, asnOrg: 'Deutsche Telekom AG' });
+    expect(parseExitLookup({ ip: '1.2.3.4', asn: { asn: 'AS7922', name: 'Comcast' } })).toEqual({ ip: '1.2.3.4', asn: 7922, asnOrg: 'Comcast' });
+    expect(parseExitLookup({})).toEqual({});
+  });
+
+  it('/v1/proxies chỉ giữ id + last_*; bỏ host, username, password', () => {
+    const proxies = DEFAULT_ENDPOINT_MAP.proxies as EndpointSpec<void, unknown[]>;
+    const out = proxies.parse({ ok: true, data: [{ id: 'px', name: 'de', kind: 'socks5', host: 'h', port: 1080, username: 'u', password: 'hunter2', last_ip: '1.2.3.4', last_country: 'de', last_timezone: 'Europe/Berlin' }] }, { now: 'x' });
+    expect(out).toEqual([{ id: 'px', lastIp: '1.2.3.4', lastCountry: 'DE', lastTimezone: 'Europe/Berlin' }]);
+    expect(JSON.stringify(out)).not.toContain('hunter2');
   });
 });

@@ -20,7 +20,7 @@ import {
 } from '@sctech/profilevault-contract';
 import { badResponse, profileNotFound } from '../errors.js';
 
-export type FuryCapability = 'health' | 'listProfiles' | 'getProfile' | 'getStatus' | 'launch' | 'stop' | 'checkExit' | 'personas';
+export type FuryCapability = 'health' | 'listProfiles' | 'getProfile' | 'getStatus' | 'launch' | 'stop' | 'checkExit' | 'personas' | 'proxies';
 
 export interface ParseContext {
   now: string;
@@ -48,6 +48,14 @@ export interface FuryPersonaInfo {
   screen?: { width: number; height: number };
 }
 
+/** Exit cuối Fury ghi cho một proxy (chỉ các trường này; mật khẩu/host bị bỏ khi parse). */
+export interface FuryProxyExit {
+  id: string;
+  lastIp?: string;
+  lastCountry?: string;
+  lastTimezone?: string;
+}
+
 export interface FuryEndpointMap {
   health: EndpointSpec<void, { version: string }> | MissingEndpoint;
   listProfiles: EndpointSpec<void, FuryProfileSummary[]> | MissingEndpoint;
@@ -58,11 +66,13 @@ export interface FuryEndpointMap {
   checkExit: EndpointSpec<{ profileId: string }, ExitInfo> | MissingEndpoint;
   /** Danh mục persona, để bổ sung OS/GPU/màn hình cho `getProfile`. */
   personas: EndpointSpec<void, FuryPersonaInfo[]> | MissingEndpoint;
+  /** Danh sách proxy, chỉ lấy exit cuối (SPIKE-P5). */
+  proxies: EndpointSpec<void, FuryProxyExit[]> | MissingEndpoint;
   /** Năng lực không có endpoint riêng, suy từ dữ liệu trả về. */
   meta: {
     /** `getProfile` có trả `seed` không. */
     seed: FuryCapabilitySource;
-    /** `checkExit` có trả `asnType` không. TODO(SPIKE-P5) */
+    /** `checkExit` có trả `asnType` không (Fury 0.3.22: không — xác nhận tay). */
     asnType: FuryCapabilitySource;
     /** Sửa văn bản JSON trước khi parse (vd số nguyên 64 bit → chuỗi). */
     normalizeJson?: (text: string) => string;
@@ -137,6 +147,9 @@ const RawPersona = z
   .object({ id: z.string(), os: z.string().nullish(), gpu: z.string().nullish(), screen: z.string().nullish() })
   .passthrough();
 
+// Proxy của Fury trả cả host/username/password (chế độ cục bộ): CHỈ đọc id + last_* (Constitution IV)
+const RawProxy = z.object({ id: z.string().min(1), last_ip: z.string().nullish(), last_country: z.string().nullish(), last_timezone: z.string().nullish() });
+
 const RawLaunch = z
   .object({ pid: z.number().int().optional(), ws_endpoint: z.string().min(1).optional() })
   .passthrough();
@@ -204,7 +217,7 @@ function findProfile(cap: 'getProfile' | 'getStatus', raw: unknown, ctx: ParseCo
   return p;
 }
 
-/** Chuẩn hóa kết quả kiểm exit (dùng khi có nguồn checkExit — TODO(SPIKE-P5)). */
+/** Chuẩn hóa kết quả kiểm exit khi Fury có nguồn checkExit riêng (bản sau / FakeFury). */
 export function parseExitInfo(raw: unknown, ctx: ParseContext): ExitInfo {
   const e = parseWith('checkExit', RawExit, raw);
   const asnType = e.asnType !== undefined ? AsnTypeSchema.safeParse(e.asnType.toLowerCase()) : undefined;
@@ -268,7 +281,7 @@ export const DEFAULT_ENDPOINT_MAP: FuryEndpointMap = {
     body: ({ profileId }) => ({ id: profileId }),
     parse: () => undefined,
   },
-  // TODO(SPIKE-P5): API công khai không có kiểm exit proxy (app dùng IPC riêng). Chờ P5 chọn nguồn khác.
+  // API công khai không có kiểm exit (app dùng IPC riêng cần mật khẩu proxy) → HttpFuryClient dùng exit-lookup (SPIKE-P5)
   checkExit: { source: 'missing' },
   personas: {
     source: 'native',
@@ -281,6 +294,19 @@ export const DEFAULT_ENDPOINT_MAP: FuryEndpointMap = {
         if (p.gpu) out.gpu = p.gpu;
         const screen = parseScreen(p.screen);
         if (screen) out.screen = screen;
+        return out;
+      }),
+  },
+  proxies: {
+    source: 'native',
+    method: 'GET',
+    path: () => '/v1/proxies',
+    parse: (raw) =>
+      parseWith('proxies', envelope(z.array(RawProxy)), raw).data.map((p) => {
+        const out: FuryProxyExit = { id: p.id };
+        if (p.last_ip) out.lastIp = p.last_ip;
+        if (p.last_country) out.lastCountry = p.last_country.toUpperCase();
+        if (p.last_timezone) out.lastTimezone = p.last_timezone;
         return out;
       }),
   },

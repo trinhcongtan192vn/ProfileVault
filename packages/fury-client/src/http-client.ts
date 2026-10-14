@@ -22,6 +22,7 @@ import {
   type MissingEndpoint,
   type ParseContext,
 } from './adapter/endpoint-map.js';
+import { lookupUrl, parseExitLookup, type ExitLookupConfig } from './adapter/exit-lookup.js';
 import type { ProfileConfigFileSource } from './adapter/profile-config-file.js';
 import { FURY_RETRY_BACKOFF_MS, FURY_TIMEOUTS_MS, realTimers, type FuryClient, type FuryTimeouts, type Timers } from './client.js';
 import { furyOffline, isRetryableFuryError, mapHttpStatus } from './errors.js';
@@ -44,6 +45,8 @@ export interface HttpFuryClientOptions {
   timeouts?: Partial<FuryTimeouts>;
   /** Số lần thử lại tối đa cho lỗi mạng/5xx (mặc định 2). */
   maxRetries?: number;
+  /** Tra exit khi Fury không có kiểm exit (SPIKE-P5). Không truyền/`null` = tắt (test không gọi mạng); app truyền `config.fury.exitLookup`. */
+  exitLookup?: ExitLookupConfig | null;
 }
 
 export function fromSecretStore(store: SecretStore): () => Promise<string | undefined> {
@@ -174,8 +177,40 @@ export class HttpFuryClient implements FuryClient {
     await this.call('stop', { profileId }, { retry: true });
   }
 
+  /**
+   * Kiểm exit. Fury có nguồn riêng → dùng; không có (0.3.22) → profile không proxy: tra IP của máy; có proxy:
+   * tra `last_ip` Fury đã ghi cho proxy. Không có bằng chứng (Fury chưa kiểm proxy, dịch vụ tra lỗi) → `ok: false`
+   * với mã `EXIT_UNKNOWN` / `LOOKUP_FAILED` (Health không coi là cờ đỏ).
+   */
   async checkExit(profileId: string): Promise<ExitInfo> {
-    return this.call('checkExit', { profileId }, { retry: true });
+    if (this.endpoints.checkExit.source !== 'missing') return this.call('checkExit', { profileId }, { retry: true });
+    const lookup = this.opts.exitLookup ?? null;
+    if (!lookup) throw new PvError('FURY_CAPABILITY_MISSING', 'Fury không có kiểm exit và tra exit đang tắt', { capability: 'checkExit' });
+    const checkedAt = this.clock.nowIso();
+    const detail = await this.call('getProfile', { profileId }, { retry: true });
+    let ip: string | undefined;
+    if (detail.proxyRef) {
+      if (this.endpoints.proxies.source === 'missing') throw new PvError('FURY_CAPABILITY_MISSING', 'Fury không liệt kê proxy', { capability: 'checkExit' });
+      const proxy = (await this.call('proxies', undefined, { retry: true })).find((p) => p.id === detail.proxyRef);
+      if (!proxy?.lastIp) return { ok: false, error: 'EXIT_UNKNOWN', checkedAt };
+      ip = proxy.lastIp;
+    }
+    const started = Date.now();
+    const ac = new AbortController();
+    const timer = setTimeout(() => ac.abort(), this.timeouts.checkExit);
+    try {
+      const res = await this.fetchFn(lookupUrl(lookup, ip), { headers: { accept: 'application/json' }, signal: ac.signal });
+      if (!res.ok) return { ok: false, error: 'LOOKUP_FAILED', checkedAt };
+      const r = parseExitLookup(await res.json());
+      const out: ExitInfo = { ok: r.ip !== undefined, ...r, asnType: 'unknown', latencyMs: Date.now() - started, checkedAt };
+      if (!out.ok) out.error = 'LOOKUP_FAILED';
+      return out;
+    } catch (err) {
+      this.opts.logger?.debug('tra exit lỗi', { error: err instanceof Error ? err.name : 'unknown' });
+      return { ok: false, error: 'LOOKUP_FAILED', checkedAt };
+    } finally {
+      clearTimeout(timer);
+    }
   }
 
   async capabilities(): Promise<FuryCapabilities> {
@@ -189,7 +224,7 @@ export class HttpFuryClient implements FuryClient {
       stop: src(e.stop as EndpointSpec<unknown, unknown> | MissingEndpoint),
       profileConfig,
       seed: e.meta.seed,
-      checkExit: src(e.checkExit as EndpointSpec<unknown, unknown> | MissingEndpoint),
+      checkExit: e.checkExit.source !== 'missing' ? e.checkExit.source : this.opts.exitLookup && e.proxies.source !== 'missing' ? 'fallback' : 'missing',
       asnType: e.checkExit.source === 'missing' ? 'missing' : e.meta.asnType,
     };
   }
