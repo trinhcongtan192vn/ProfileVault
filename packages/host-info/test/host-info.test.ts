@@ -10,9 +10,10 @@ const SCREEN_FIXTURE = JSON.stringify([
   { Primary: false, Bounds: { Width: 1920, Height: 1080 } },
 ]);
 
-describe('host-info (SPIKE-P6)', () => {
+describe('host-info (SPIKE-P6 đã xác minh)', () => {
   it('parse GPU và màn hình từ fixture PowerShell; JSON hỏng → rỗng', () => {
-    expect(parseVideoControllers(GPU_FIXTURE)).toEqual([{ name: 'NVIDIA GeForce RTX 5060 Ti', vramMb: 4095 }, { name: 'Microsoft Basic Display Adapter' }]);
+    // 4095 MB = trần uint32 của AdapterRAM → bỏ vramMb (SPIKE-P6)
+    expect(parseVideoControllers(GPU_FIXTURE)).toEqual([{ name: 'NVIDIA GeForce RTX 5060 Ti' }, { name: 'Microsoft Basic Display Adapter' }]);
     expect(parseVideoControllers('{"Name":"Solo","AdapterRAM":1048576}')).toEqual([{ name: 'Solo', vramMb: 1 }]);
     expect(parseScreens(SCREEN_FIXTURE)).toEqual([
       { width: 2560, height: 1440, primary: true },
@@ -54,7 +55,7 @@ describe('host-info (SPIKE-P6)', () => {
     expect(called).toBe(false);
   });
 
-  it.skipIf(process.platform !== 'win32')('đọc máy thật trên Windows trong < 3 s (TODO(SPIKE-P6))', async () => {
+  it.skipIf(process.platform !== 'win32')('đọc máy thật trên Windows trong < 3 s (SPIKE-P6)', async () => {
     const t0 = Date.now();
     const snap = await captureHostSnapshot({ timeoutMs: 3000 });
     expect(Date.now() - t0).toBeLessThan(5000);

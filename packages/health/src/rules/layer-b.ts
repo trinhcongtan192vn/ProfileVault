@@ -45,7 +45,7 @@ export const LAYER_B: ConsistencyRule[] = [
     evaluate(ctx, params) {
       const id = ctx.binding.id;
       if (!ctx.probe?.data.webgl?.renderer) return unknown(id, 'Probe không có renderer WebGL.');
-      if (!ctx.host || ctx.host.gpus.length === 0) return unknown(id, 'Chưa đọc được GPU của máy (SPIKE-P6).');
+      if (!ctx.host || ctx.host.gpus.length === 0) return unknown(id, 'Chưa đọc được GPU của máy (host_snapshots trống hoặc PowerShell lỗi).');
       const personaTier = gpuTier(ctx.probe.data.webgl.renderer, ctx.data.gpuTiers);
       const hostTiers = ctx.host.gpus.map((g) => gpuTier(g.name, ctx.data.gpuTiers)).filter((t): t is number => t !== undefined);
       if (personaTier === undefined) return unknown(id, `Chưa xếp hạng được GPU persona "${ctx.probe.data.webgl.renderer}"; cập nhật bảng gpu-tiers.`);
@@ -68,7 +68,7 @@ export const LAYER_B: ConsistencyRule[] = [
     evaluate(ctx) {
       const id = ctx.binding.id;
       if (!ctx.probe) return unknown(id, 'Chưa có probe.');
-      if (!ctx.host || ctx.host.displays.length === 0) return unknown(id, 'Chưa đọc được màn hình của máy (SPIKE-P6).');
+      if (!ctx.host || ctx.host.displays.length === 0) return unknown(id, 'Chưa đọc được màn hình của máy (host_snapshots trống hoặc PowerShell lỗi).');
       const maxW = Math.max(...ctx.host.displays.map((d) => d.width));
       const maxH = Math.max(...ctx.host.displays.map((d) => d.height));
       const s = ctx.probe.data.screen;

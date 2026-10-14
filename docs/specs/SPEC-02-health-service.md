@@ -159,7 +159,7 @@ Severity thực tế = `consistency_rules.severity` (người vận hành chỉn
 | `furyProfile` | `FuryClient.getProfile` | **[SPIKE-P2]** |
 | `exit` | `proxy_checks` gần nhất có `ok = 1`, không quá 24 giờ | |
 | `probe`, `previousProbe` | `probe_results` gần nhất và liền trước | |
-| `host` | `host_snapshots` gần nhất (chụp khi khởi động và mỗi 24 giờ) | **[SPIKE-P6]** |
+| `host` | `host_snapshots` gần nhất (chụp khi khởi động và mỗi 24 giờ) | Đã xác minh SPIKE-P6: `os`, PowerShell `Win32_VideoController` + `Screen.AllScreens`, không cần admin, < 3 s. VRAM từ `AdapterRAM` bị chặn 4 GB nên không dùng |
 | `checklist` | `account_checklists` | |
 | `allBindings` | Mọi binding chưa archive kèm `exit`, `furyProfile`, `checklist` của từng cái | |
 

@@ -10,3 +10,4 @@ Ghi mọi lần một quyết định trong `docs/` bị đổi khi triển khai
 | 2026-10-14 | `session_check.ok` cho phép mức `warn` (ngoài `info`) khi `studioLanguageOk = false` | SPEC-04 §4 yêu cầu "Health ghi sự kiện warn" nhưng SPEC-00 §7.1 chỉ ghi `info`; dùng cùng loại sự kiện với mức khác thay vì thêm loại mới | `docs/specs/SPEC-00-nen-tang.md` §7.1 |
 | 2026-10-14 | `config.gateway.port` cho phép 0 (hệ điều hành chọn cổng) | Chạy test/dev song song không đụng cổng 50410; mặc định vẫn 50410 | — |
 | 2026-10-14 | Thêm dependency trực tiếp `ajv` cho Runner | SPEC-03 §2.2 dùng JSON Schema của pack; Ajv kiểm cấu hình pack người dùng đầy đủ, tránh tự viết bộ kiểm một phần. Gói đã có trong cây dependency Fastify | — |
+| 2026-10-14 | SPEC-02 §6.2: gỡ đánh dấu [SPIKE-P6], ghi nguồn host đã xác minh; `vramMb` bỏ khi `AdapterRAM` chạm trần 4 GB | Kết quả SPIKE-P6 (SPIKE-bao-cao.md); không luật nào dùng VRAM nên không đổi hành vi luật | `docs/specs/SPEC-02-health-service.md` §6.2 |

@@ -7,7 +7,7 @@ File này để một phiên làm việc mới tiếp tục được từ chỗ 
 **Điểm dừng hiện tại:** code M0 (001–007) xong và đã commit/push; `pnpm build`, `pnpm lint`, `pnpm test` xanh
 (255 Vitest + 7 Playwright fixture). 006 còn task T015 là nghiệm thu desktop Windows bằng tay (tray, toast, autostart).
 Feature 008 (onboarding tự tải/cài Fury) đã **bỏ** theo yêu cầu người dùng; quy tắc "không cài Fury" giữ nguyên.
-Chưa chạy Fury/YouTube thật, chưa chạy P1–P7 (trừ P6 nếu ghi ở SPIKE-bao-cao), chưa đủ điều kiện phát hành M0/live.
+Chưa chạy Fury/YouTube thật, đã chạy P6 (đạt); chưa chạy P1–P5, P7, chưa đủ điều kiện phát hành M0/live.
 Không bắt đầu M1 khi P4 chưa đạt (SPIKE-ke-hoach "Thứ tự").
 
 ## 1. Quy trình mỗi feature
@@ -26,7 +26,7 @@ Không bắt đầu M1 khi P4 chưa đạt (SPIKE-ke-hoach "Thứ tự").
 | 001 | Monorepo pnpm, `packages/contract`, `packages/db` (schema + migration SQLite đầy đủ), config, bí mật DPAPI, bus sự kiện, khóa một phiên bản, bootstrap `apps/service` | SPEC-00 toàn bộ | ✅ xong | 66 test; `specs/001-foundation-monorepo/`; thêm `packages/core` (decisions.md) |
 | 002 | `packages/fury-client`: giao diện, adapter HTTP (ánh xạ endpoint `TODO(SPIKE-P2)`), bộ theo dõi trạng thái, FakeFury | SPEC-01; SPEC-09 §3.1 | ✅ xong | 26 test; `specs/002-fury-client/`; endpoint giả định G8 |
 | 003 | `packages/health` phần 1: binding, sự kiện, kiểm proxy theo lịch, ngưỡng, lên mức, hạ mức/dừng R1–R7, detect-suite, đồng hồ giả | SPEC-02 §1–5, §7–10 (trừ §6) | ✅ xong | 27 test; `specs/003-health-levels/`; R1–R7, readiness, proxy check, scheduler, nối bootstrap |
-| 004 | `packages/health` phần 2: chuẩn hóa probe (`TODO(SPIKE-P3)`), 22 luật (SPEC-02 §6.4 có 22, không phải 21), checklist HMAC, `packages/host-info` (`TODO(SPIKE-P6)`) | SPEC-02 §6 | ✅ xong | 56 test health; `specs/004-consistency-rules/` |
+| 004 | `packages/health` phần 2: chuẩn hóa probe (`TODO(SPIKE-P3)`), 22 luật (SPEC-02 §6.4 có 22, không phải 21), checklist HMAC, `packages/host-info` (P6 đã xác minh) | SPEC-02 §6 | ✅ xong | 56 test health; `specs/004-consistency-rules/` |
 | 005 | `packages/gateway` M0: Fastify loopback, kiểm Host/Origin, phiên dashboard `/auth/open`, toàn bộ `/internal/*`, SSE, audit, mã lỗi HTTP | SPEC-05 §2–4.1, §5.2, §7, §9–11 | ✅ xong | 21 test; `specs/005-gateway-internal/`; Runner facade chờ 007 |
 | 006 | `apps/dashboard` + tray + toast: 8 trang, wizard gắn kênh, khai báo một chạm, biểu đồ, Chờ bạn, Cài đặt | SPEC-07 | ⚠️ xong code | 17/18 task; T015 còn nghiệm thu desktop. Smoke Chromium đã kiểm wizard 2 kênh, upload/undo/SSE/CAPTCHA/CSV |
 | 007 | `packages/runner`: Flow contract, `ctx.ui`, humanGate, Runner, lịch + chạy bù, linter `tools/eslint-plugin-pv`; pack `generic/session-check` và `youtube/session-check` với fixture HTML | SPEC-03; SPEC-04 §2.1–2.2, §3, §4 | ✅ xong code | 15/15 task; Runner thật nối bootstrap/gateway; CDP Chromium thật qua FakeFury, không Fury thật |
@@ -43,7 +43,7 @@ Ký hiệu: ⏳ chưa làm · 🔄 đang làm · ✅ xong · ⚠️ xong có ghi
 | Q1 | Định dạng thật của Automation API Fury (endpoint, JSON) | SPEC-01 §4, SPIKE-P2 | Chờ spike P2; adapter HTTP có `TODO(SPIKE-P2)` |
 | Q2 | Định dạng file probe của Fury | SPEC-02 §6.3, SPIKE-P3 | Chờ spike P3; `parseFuryCapture` có `TODO(SPIKE-P3)` |
 | Q3 | Fury có kiểm exit proxy không mở trình duyệt và phân loại ASN không | SPEC-01 §4, SPIKE-P5 | Chờ spike P5; mặc định `asnType = unknown` + `asn_attestations` |
-| Q4 | Đọc GPU/màn hình trên Windows không cần admin | SPIKE-P6 | Chờ spike P6; `host-info` có fallback `unknown` |
+| Q4 | Đọc GPU/màn hình trên Windows không cần admin | SPIKE-P6 | **Đã trả lời 2026-10-14:** đọc được, ~170 ms, không cần admin; VRAM không đáng tin (trần 4 GB) — xem SPIKE-bao-cao |
 | Q5 | Yêu cầu triển khai ghi "21 luật" nhưng SPEC-02 §6.4 liệt kê 22 (A1–A6, B1–B4, C1–C3, D1–D5, E1–E4) | SPEC-02 §6.4 | Đã cài 22; người duyệt xác nhận |
 
 ## 4. Giả định khi triển khai
@@ -70,7 +70,7 @@ Những điểm `docs/` không trả lời; đã chọn phương án nhất quá
 | G17 | Phiên bản Fury hiện tại lưu `settings['fury.currentVersion']` do poller cập nhật; chưa biết → `detect_suite_pass` chưa đạt | 003 | SPEC-02 không nói nguồn "phiên bản hiện tại" |
 | G18 | Lịch kiểm proxy: RNG seed, giờ địa phương bằng `Intl` theo `config.ui.timezone`; lượt lỡ khi tắt tiến trình không chạy bù | 003 | SPEC-02 §7 chỉ nêu 4 khung giờ |
 | G19 | Probe: `parseFuryCapture` thử các bộ chuyển đổi; bộ `furyCaptureV1` là giả định `TODO(SPIKE-P3)`; test dùng probe giả dạng chuẩn hóa | 004 | SPIKE-P3 chưa chạy |
-| G20 | host-info: PowerShell CIM + `System.Windows.Forms.Screen`, timeout 3 s, lỗi → mảng rỗng và luật B2/B3 `unknown` | 004 | SPIKE-P6 chưa chạy |
+| G20 | host-info: PowerShell CIM + `System.Windows.Forms.Screen`, timeout 3 s, lỗi → mảng rỗng và luật B2/B3 `unknown` | 004 | SPIKE-P6 đã xác minh 2026-10-14 |
 | G21 | A4: `geolocation` `off`/`auto` → pass; `manual` cần tọa độ exit từ `city-coords.json`, thiếu → `unknown` | 004 | `ExitInfo` không có lat/lon |
 | G22 | A2: múi giờ → quốc gia bằng `timezone-countries.json`; không có → `unknown` | 004 | SPEC-02 không nêu nguồn ánh xạ |
 | G23 | A6: WebRTC IP nội bộ (RFC1918, mDNS) không coi là rò | 004 | SPEC-02 nói "⊆ {exit.ip} hoặc rỗng" không bàn IP nội bộ |
@@ -116,10 +116,6 @@ Cập nhật sau mỗi feature (lệnh: `grep -rn --exclude-dir=dist "TODO(SPIKE
 | SPIKE-P3 | `packages/health/src/probe/converters.ts:31` | * TODO(SPIKE-P3): giả định trang probe Fury xuất `{ meta: { furyVersion, capturedAt }, fingerprint: { ... } }` |
 | SPIKE-P3 | `packages/health/src/probe/normalize.ts:25` | * `converters` tiêm được (TODO(SPIKE-P3)). |
 | SPIKE-P3 | `packages/health/test/probe.test.ts:13` | describe('chuẩn hóa probe (SPEC-02 §6.3, TODO(SPIKE-P3))', () => { |
-| SPIKE-P6 | `packages/host-info/src/capture.ts:10` | * TODO(SPIKE-P6): xác nhận hai lệnh dưới trả đủ trường trong < 3 giây trên máy đích. |
-| SPIKE-P6 | `packages/host-info/src/parse.ts:3` | /** Parse đầu ra `Get-CimInstance Win32_VideoController / Select Name, AdapterRAM / ConvertTo-Json`. TODO(SPIK |
-| SPIKE-P6 | `packages/host-info/src/parse.ts:26` | /** Parse đầu ra `[System.Windows.Forms.Screen]::AllScreens / Select Primary, Bounds / ConvertTo-Json`. TODO(S |
-| SPIKE-P6 | `packages/host-info/test/host-info.test.ts:57` | it.skipIf(process.platform !== 'win32')('đọc máy thật trên Windows trong < 3 s (TODO(SPIKE-P6))', async () =>  |
 
 ## 6. Thay đổi với `docs/`
 

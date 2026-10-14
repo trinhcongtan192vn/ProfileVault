@@ -1,6 +1,13 @@
 import type { HostSnapshot } from '@sctech/profilevault-contract';
 
-/** Parse đầu ra `Get-CimInstance Win32_VideoController | Select Name, AdapterRAM | ConvertTo-Json`. TODO(SPIKE-P6): xác minh tên trường. */
+/** Trần của `AdapterRAM` (uint32, 4095 MB): từ mức này trở lên coi là không biết. */
+export const ADAPTER_RAM_CAP_BYTES = 4095 * 1024 * 1024;
+
+/**
+ * Parse đầu ra `Get-CimInstance Win32_VideoController | Select Name, AdapterRAM | ConvertTo-Json`.
+ * Đã xác minh ở SPIKE-P6 (2026-10-14). `AdapterRAM` là uint32 nên bị chặn ở ~4 GB: giá trị chạm trần
+ * (≥ 4095 MB) không đáng tin và bị bỏ (`vramMb` không có) thay vì lưu số sai.
+ */
 export function parseVideoControllers(json: string): HostSnapshot['gpus'] {
   let raw: unknown;
   try {
@@ -17,13 +24,13 @@ export function parseVideoControllers(json: string): HostSnapshot['gpus'] {
     if (!name) continue;
     const ram = typeof o.AdapterRAM === 'number' ? o.AdapterRAM : typeof o.adapterRAM === 'number' ? o.adapterRAM : undefined;
     const gpu: HostSnapshot['gpus'][number] = { name };
-    if (ram !== undefined && ram > 0) gpu.vramMb = Math.round(ram / (1024 * 1024));
+    if (ram !== undefined && ram > 0 && ram < ADAPTER_RAM_CAP_BYTES) gpu.vramMb = Math.round(ram / (1024 * 1024));
     out.push(gpu);
   }
   return out;
 }
 
-/** Parse đầu ra `[System.Windows.Forms.Screen]::AllScreens | Select Primary, Bounds | ConvertTo-Json`. TODO(SPIKE-P6). */
+/** Parse đầu ra `[System.Windows.Forms.Screen]::AllScreens | Select Primary, Bounds | ConvertTo-Json`. Đã xác minh ở SPIKE-P6. */
 export function parseScreens(json: string): HostSnapshot['displays'] {
   let raw: unknown;
   try {

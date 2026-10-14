@@ -213,7 +213,7 @@ export type ChecklistStatus = z.infer<typeof ChecklistStatusSchema>;
 
 export const CHECKLIST_VALIDITY_DAYS = 90;
 
-// ---- Host (SPIKE-P6) ----
+// ---- Host (đã xác minh SPIKE-P6) ----
 
 export const HostSnapshotSchema = z.object({
   os: z.string(),
