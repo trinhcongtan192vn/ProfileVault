@@ -47,7 +47,7 @@ function Shell() {
     <>
       <TopBar sse={sse} />
       <FuryInstallBanner />
-      {expired && <div className="banner">Phiên dashboard đã hết hạn. Mở lại dashboard từ biểu tượng ProfileVault trên khay hệ thống.</div>}
+      {expired && <div className="banner">Phiên dashboard đã hết hạn. Để mở lại, bấm lối tắt ProfileVault trên Desktop hoặc chọn "Mở dashboard" ở biểu tượng ProfileVault trên khay hệ thống.</div>}
       <main>
         <AppRoutes />
       </main>

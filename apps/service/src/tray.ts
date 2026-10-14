@@ -60,12 +60,13 @@ export async function createTrayBackend(onError: (err: unknown) => void, factory
   const tray = factory({ menu: { icon: trayIcon('gray'), title: 'ProfileVault', tooltip: 'ProfileVault', items: nativeItems }, copyDir: false });
   let timeout: ReturnType<typeof setTimeout> | undefined;
   try {
+    // systray2 chỉ có tiến trình con sau ready(): gọi onError trước đó → "Cannot read properties of null (reading 'on')"
     await Promise.race([tray.ready(), new Promise<never>((_, reject) => {
-      tray.onError((err) => { onError(err); reject(err); });
       timeout = setTimeout(() => reject(new Error('Tray không khởi động trong 5 giây')), 5000);
     })]);
   } catch (err) { void tray.kill(false).catch(onError); throw err; }
   finally { if (timeout) clearTimeout(timeout); }
+  tray.onError(onError);
   return {
     async setMenu(items, color) { items.forEach((item, i) => Object.assign(nativeItems[i]!, { ...item, tooltip: item.title, enabled: item.enabled ?? true })); await tray.sendAction({ type: 'update-menu', menu: { icon: trayIcon(color), title: 'ProfileVault', tooltip: 'ProfileVault', items: nativeItems } }); },
     onClick(listener) { void tray.onClick((event) => listener(event.seq_id)).catch(onError); },

@@ -10,7 +10,15 @@ describe('Tray SPEC-07 §6', () => {
     let initial: MenuItem[] = [];
     const backend = await createTrayBackend(() => undefined, (config) => {
       initial = config.menu.items;
-      return { onError() {}, async ready() {}, async sendAction(action) { actions.push(action); }, async onClick() {}, async kill() {} };
+      // Như systray2: tiến trình con chỉ có sau ready(); onError trước đó → TypeError (lỗi thật 2026-10-14)
+      let started = false;
+      return {
+        onError() { if (!started) throw new TypeError("Cannot read properties of null (reading 'on')"); },
+        async ready() { await Promise.resolve(); started = true; },
+        async sendAction(action) { actions.push(action); },
+        async onClick() {},
+        async kill() {},
+      };
     });
     await backend.setMenu(Array.from({ length: 6 }, (_, i) => ({ title: `Menu ${i}` })), 'green');
     const action = actions[0]!;

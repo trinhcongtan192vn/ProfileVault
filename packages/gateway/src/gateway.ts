@@ -64,7 +64,7 @@ export async function createGateway(deps: GatewayDeps): Promise<Gateway> {
     const { code, next } = req.query as { code?: string; next?: string };
     if (!openCodes.consume(code)) {
       req.denyReason = 'open_code';
-      return reply.code(401).send({ error: { code: 'UNAUTHORIZED', message: 'Mã mở dashboard không hợp lệ hoặc đã hết hạn. Mở lại từ biểu tượng tray.' } });
+      return reply.code(401).send({ error: { code: 'UNAUTHORIZED', message: 'Link mở dashboard không hợp lệ hoặc đã hết hạn (chỉ dùng được một lần, trong 60 giây). Để mở lại, bấm lối tắt ProfileVault trên Desktop hoặc chọn "Mở dashboard" ở biểu tượng ProfileVault trên khay hệ thống.' } });
     }
     const s = sessions.create();
     deps.audit.append({ actorType: 'user', action: 'dashboard.login' });
@@ -85,7 +85,7 @@ export async function createGateway(deps: GatewayDeps): Promise<Gateway> {
     const s = sessions.touch(req.cookies[SESSION_COOKIE]);
     if (!s) {
       req.denyReason = 'session';
-      return reply.code(401).send({ error: { code: 'UNAUTHORIZED', message: 'Chưa có phiên dashboard. Mở dashboard từ biểu tượng tray.' , detail: { reason: 'session' } } });
+      return reply.code(401).send({ error: { code: 'UNAUTHORIZED', message: 'Chưa có phiên dashboard. Để mở, bấm lối tắt ProfileVault trên Desktop hoặc chọn "Mở dashboard" ở biểu tượng ProfileVault trên khay hệ thống.' , detail: { reason: 'session' } } });
     }
     if (isWriteMethod(req.method) && !sessions.csrfValid(s, req.headers[CSRF_HEADER] as string | undefined)) {
       req.denyReason = 'csrf';
@@ -128,7 +128,7 @@ export async function createGateway(deps: GatewayDeps): Promise<Gateway> {
   const serveIndex = (req: FastifyRequest, reply: FastifyReply) => {
     if (!sessions.touch(req.cookies[SESSION_COOKIE])) {
       req.denyReason = 'session';
-      return reply.code(401).type('text/html; charset=utf-8').send(MINIMAL_HTML('ProfileVault', 'Chưa có phiên dashboard. Mở dashboard từ biểu tượng ProfileVault trên khay hệ thống (tray).'));
+      return reply.code(401).type('text/html; charset=utf-8').send(MINIMAL_HTML('ProfileVault', 'Chưa có phiên dashboard, hoặc phiên đã hết khi ProfileVault khởi động lại. Để mở, bấm lối tắt ProfileVault trên Desktop hoặc chọn "Mở dashboard" ở biểu tượng ProfileVault trên khay hệ thống.'));
     }
     if (staticDir) return reply.sendFile('index.html');
     return reply.type('text/html; charset=utf-8').send(MINIMAL_HTML('ProfileVault', 'Dashboard chưa được build (feature 006). API nội bộ đang chạy tại /internal.'));
