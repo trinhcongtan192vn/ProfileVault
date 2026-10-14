@@ -68,6 +68,7 @@ profilevault/
 ├─ packages/
 │  ├─ contract/           # @sctech/profilevault-contract: Zod schema, mã lỗi, kiểu API
 │  ├─ db/                 # schema Drizzle, migration, repository
+│  ├─ core/               # hạ tầng dùng chung: cấu hình, đường dẫn, bí mật DPAPI, bus sự kiện, khóa phiên bản, log
 │  ├─ fury-client/        # SPEC-01
 │  ├─ health/             # SPEC-02
 │  ├─ runner/             # SPEC-03 (flow contract, runner, scheduler, linter)

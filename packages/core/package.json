@@ -1,0 +1,29 @@
+{
+  "name": "@sctech/profilevault-core",
+  "version": "0.1.0",
+  "description": "ProfileVault: hạ tầng dùng chung (cấu hình, đường dẫn, bí mật DPAPI, bus sự kiện, khóa phiên bản, log, seeder)",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": ["dist"],
+  "scripts": {
+    "build": "tsc -b",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@primno/dpapi": "^2.0.1",
+    "@sctech/profilevault-contract": "workspace:*",
+    "@sctech/profilevault-db": "workspace:*",
+    "zod": "^4.6.0"
+  },
+  "devDependencies": {
+    "typescript": "~5.9.3",
+    "vitest": "^5.0.4"
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "composite": false,
+    "declaration": false,
+    "declarationMap": false,
+    "sourceMap": false,
+    "noEmit": true,
+    "allowJs": true
+  },
+  "include": [
+    "apps/*/src/**/*",
+    "apps/*/test/**/*",
+    "packages/*/src/**/*",
+    "packages/*/test/**/*",
+    "packs/*/src/**/*",
+    "packs/*/flows/**/*",
+    "packs/*/test/**/*",
+    "tools/*/src/**/*",
+    "tools/*/test/**/*",
+    "*.ts",
+    "*.js",
+    "*/*/vitest.config.ts",
+    "*/*/drizzle.config.ts"
+  ]
+}

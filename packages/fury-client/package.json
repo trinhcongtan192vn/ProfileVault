@@ -1,0 +1,23 @@
+{
+  "name": "@sctech/profilevault-fury-client",
+  "version": "0.1.0",
+  "private": true,
+  "description": "FuryClient (khung; SPEC-01 ở feature 002)",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -b",
+    "test": "vitest run --passWithNoTests"
+  },
+  "devDependencies": {
+    "typescript": "~5.9.3",
+    "vitest": "^5.0.4"
+  }
+}

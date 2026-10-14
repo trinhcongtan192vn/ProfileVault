@@ -1,0 +1,38 @@
+{
+  "name": "profilevault",
+  "version": "0.1.0",
+  "private": true,
+  "description": "ProfileVault: mức tự động hóa có bằng chứng cho profile Fury (M0)",
+  "packageManager": "pnpm@10.34.7",
+  "engines": {
+    "node": ">=22"
+  },
+  "type": "module",
+  "scripts": {
+    "build": "tsc -b",
+    "typecheck": "tsc -b",
+    "lint": "eslint .",
+    "test": "tsc -b && vitest run",
+    "test:watch": "vitest",
+    "dev": "pnpm --filter @sctech/profilevault-service dev"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.0",
+    "@types/node": "^22.19.0",
+    "eslint": "^10.0.0",
+    "globals": "^17.0.0",
+    "typescript": "~5.9.3",
+    "typescript-eslint": "^8.71.0",
+    "vitest": "^5.0.4"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "@primno/dpapi",
+      "argon2",
+      "esbuild"
+    ],
+    "ignoredBuiltDependencies": [
+      "better-sqlite3"
+    ]
+  }
+}

@@ -16,9 +16,9 @@ File này để một phiên làm việc mới tiếp tục được từ chỗ 
 
 | # | Feature | Spec gốc | Trạng thái | Ghi chú |
 |---|---|---|---|---|
-| — | Bước 1–3: đọc docs, Spec Kit, CLAUDE.md, constitution | — | 🔄 đang làm | |
-| 001 | Monorepo pnpm, `packages/contract`, `packages/db` (schema + migration SQLite đầy đủ), config, bí mật DPAPI, bus sự kiện, khóa một phiên bản, bootstrap `apps/service` | SPEC-00 toàn bộ | ⏳ chưa làm | |
-| 002 | `packages/fury-client`: giao diện, adapter HTTP (ánh xạ endpoint `TODO(SPIKE-P2)`), bộ theo dõi trạng thái, FakeFury | SPEC-01; SPEC-09 §3.1 | ⏳ chưa làm | |
+| — | Bước 1–3: đọc docs, Spec Kit, CLAUDE.md, constitution | — | ✅ xong | commit `chore: init spec kit`, `docs: constitution and CLAUDE.md` |
+| 001 | Monorepo pnpm, `packages/contract`, `packages/db` (schema + migration SQLite đầy đủ), config, bí mật DPAPI, bus sự kiện, khóa một phiên bản, bootstrap `apps/service` | SPEC-00 toàn bộ | ✅ xong | 66 test; `specs/001-foundation-monorepo/`; thêm `packages/core` (decisions.md) |
+| 002 | `packages/fury-client`: giao diện, adapter HTTP (ánh xạ endpoint `TODO(SPIKE-P2)`), bộ theo dõi trạng thái, FakeFury | SPEC-01; SPEC-09 §3.1 | 🔄 đang làm | |
 | 003 | `packages/health` phần 1: binding, sự kiện, kiểm proxy theo lịch, ngưỡng, lên mức, hạ mức/dừng R1–R7, detect-suite, đồng hồ giả | SPEC-02 §1–5, §7–10 (trừ §6) | ⏳ chưa làm | |
 | 004 | `packages/health` phần 2: chuẩn hóa probe (`TODO(SPIKE-P3)`), 21 luật, checklist HMAC, `packages/host-info` (`TODO(SPIKE-P6)`) | SPEC-02 §6 | ⏳ chưa làm | |
 | 005 | `packages/gateway` M0: Fastify loopback, kiểm Host/Origin, phiên dashboard `/auth/open`, toàn bộ `/internal/*`, SSE, audit, mã lỗi HTTP | SPEC-05 §2–4.1, §5.2, §7, §9–11 | ⏳ chưa làm | |
@@ -45,7 +45,13 @@ Những điểm `docs/` không trả lời; đã chọn phương án nhất quá
 
 | # | Giả định | Feature | Lý do |
 |---|---|---|---|
-| (chưa có) | | | |
+| G1 | Migration: schema Drizzle + SQL sinh bằng `drizzle-kit generate` đổi tên có số thứ tự (`0001_init.sql`); bộ áp migration riêng với bảng `pv_migrations(seq, name, applied_at)`, mỗi file một giao dịch; `max(seq)` trong CSDL > số file lớn nhất trong mã → từ chối mở | 001 | SPEC-00 §8 chỉ nói "bằng Drizzle, có số thứ tự, từ chối nếu CSDL mới hơn mã"; cách theo dõi phiên bản không nêu |
+| G2 | Khóa một phiên bản: `service.lock` ghi `{pid, startedAt}`; PID không còn tồn tại → coi hết hạn, chiếm lại | 001 | SPEC-00 §11 chỉ nói "khóa file" |
+| G3 | `${TÊN}` trong chuỗi cấu hình được thay bằng biến môi trường lúc tải; thiếu biến → giữ nguyên + cảnh báo | 001 | SPEC-00 §5 dùng `${FURY_API_PORT}` nhưng không nói cơ chế |
+| G4 | Thư mục dữ liệu ghi đè được bằng `PV_APPDATA_DIR`, `PV_LOCALAPPDATA_DIR` (cho test và chạy dev) | 001 | Cần để test không đụng `%APPDATA%` thật |
+| G5 | Kho bí mật: `DpapiSecretStore` (sản phẩm, Windows) + `MemorySecretStore` (chỉ test); định dạng `secrets.bin` = JSON `{ version: 1, entries: { key: base64(DPAPI blob) } }` | 001 | SPEC-00 §5 chỉ nói "mã hóa DPAPI" |
+| G6 | Log tiến trình dạng NDJSON `service-YYYY-MM-DD.log`, xoay theo ngày, xóa > 7 ngày, che mọi giá trị đang có trong kho bí mật | 001 | SPEC-00 §5 chỉ nói "xoay vòng 7 ngày" |
+| G7 | Cơ chế seed lần chạy đầu: `registerSeeder` idempotent; 003/004 đăng ký ngưỡng và luật mặc định | 001 | SPEC-00 §11 nói "ghi luật nhất quán và ngưỡng mặc định" nhưng nội dung ở SPEC-02 |
 
 ## 5. TODO(SPIKE-Pn) còn lại
 
@@ -63,10 +69,10 @@ Xem `docs/decisions.md`.
 
 ```powershell
 pnpm install
-pnpm build          # build mọi package
-pnpm lint
-pnpm test           # unit + integration (Vitest)
-pnpm --filter @sctech/profilevault-service dev   # chạy dịch vụ nền (dev)
+pnpm build          # tsc -b mọi package
+pnpm lint           # eslint type-checked
+pnpm test           # build + vitest (unit + integration)
+pnpm dev            # apps/service qua tsx (PV_APPDATA_DIR / PV_LOCALAPPDATA_DIR để đổi thư mục dữ liệu)
 ```
 
 Mở dashboard: menu tray → "Mở dashboard" (hoặc xem mục "Lệnh" sau khi feature 005/006 xong).

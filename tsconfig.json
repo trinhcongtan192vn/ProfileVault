@@ -1,0 +1,19 @@
+{
+  "files": [],
+  "references": [
+    { "path": "packages/contract" },
+    { "path": "packages/db" },
+    { "path": "packages/core" },
+    { "path": "packages/fury-client" },
+    { "path": "packages/health" },
+    { "path": "packages/host-info" },
+    { "path": "packages/runner" },
+    { "path": "packages/jobs" },
+    { "path": "packages/gateway" },
+    { "path": "packs/generic" },
+    { "path": "packs/youtube" },
+    { "path": "tools/eslint-plugin-pv" },
+    { "path": "apps/service" },
+    { "path": "apps/dashboard" }
+  ]
+}

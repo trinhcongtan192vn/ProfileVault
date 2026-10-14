@@ -1,0 +1,32 @@
+{
+  "name": "@sctech/profilevault-db",
+  "version": "0.1.0",
+  "description": "ProfileVault: schema Drizzle, migration SQLite, repository (SPEC-00 §8)",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": ["dist", "migrations"],
+  "scripts": {
+    "build": "tsc -b",
+    "test": "vitest run",
+    "drizzle:generate": "drizzle-kit generate"
+  },
+  "dependencies": {
+    "@sctech/profilevault-contract": "workspace:*",
+    "better-sqlite3": "^13.0.3",
+    "drizzle-orm": "^0.45.4",
+    "zod": "^4.6.0"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.13",
+    "drizzle-kit": "^0.31.11",
+    "typescript": "~5.9.3",
+    "vitest": "^5.0.4"
+  }
+}
