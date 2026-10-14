@@ -1,5 +1,5 @@
 import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
-  test: { name: 'profilevault-fury-client', include: ['test/**/*.test.ts'], passWithNoTests: true },
+  test: { name: 'fury-client', include: ['test/**/*.test.ts'], testTimeout: 10_000 },
 });

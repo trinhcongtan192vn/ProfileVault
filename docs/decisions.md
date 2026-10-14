@@ -6,3 +6,4 @@ Ghi mọi lần một quyết định trong `docs/` bị đổi khi triển khai
 |---|---|---|---|
 | 2026-10-14 | Giữ tên file `docs/profilevault-prd.md` và `docs/profilevault-agent-architecture.md` (yêu cầu triển khai gọi là `docs/prd.md`, `docs/architecture.md`) | Hai file tham chiếu chéo nhau bằng tên hiện tại; đổi tên không thêm giá trị. CLAUDE.md và progress.md ghi rõ ánh xạ | — |
 | 2026-10-14 | Thêm gói `packages/core` (`@sctech/profilevault-core`) vào cấu trúc repo | `fury-client`, `health`, `gateway` cần SecretStore/EventBus/Clock/config; package không import được từ `apps/service`; `contract` chỉ nên chứa schema (SPEC-00 §2) | `docs/specs/SPEC-00-nen-tang.md` §4 |
+| 2026-10-14 | Thêm dependency `semver` (ngoài SPEC-00 §3) cho `packages/fury-client` | Kiểm `config.fury.supportedVersions` là semver range (SPEC-01 §6); tự viết parser range không đáng rủi ro | — |
