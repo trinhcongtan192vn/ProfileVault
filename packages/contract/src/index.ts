@@ -17,3 +17,5 @@ export * from './dashboard.js';
 export * from './flow.js';
 export * from './api-v1.js';
 export * from './client.js';
+/** Zod cho pack người dùng (linter pack chỉ cho import contract/runner). */
+export { z } from 'zod';

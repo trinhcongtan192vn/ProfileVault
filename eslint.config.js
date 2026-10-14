@@ -13,6 +13,8 @@ export default tseslint.config(
       '.specify/**',
       '.claude/**',
       'spikes/**',
+      // mẫu cho pack người dùng (lint bằng lintPackSource, không thuộc tsconfig nào)
+      'skills/**/references/**',
       'apps/dashboard/dist/**',
     ],
   },

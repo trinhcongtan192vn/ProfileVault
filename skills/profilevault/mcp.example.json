@@ -1,0 +1,14 @@
+{
+  "mcpServers": {
+    "profilevault": {
+      "type": "http",
+      "url": "http://127.0.0.1:50410/mcp",
+      "headers": { "Authorization": "Bearer ${PROFILEVAULT_TOKEN}" }
+    },
+    "fury": {
+      "type": "stdio",
+      "command": "${LOCALAPPDATA}\\Fury\\fury-agent.exe",
+      "args": ["mcp"]
+    }
+  }
+}

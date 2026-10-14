@@ -1,0 +1,14 @@
+{
+  "name": "profilevault",
+  "version": "1.0.0",
+  "description": "Vận hành ProfileVault qua Claude: thiết lập kênh, gửi job, hỏi tình trạng, viết flow mới (SPEC-08).",
+  "author": { "name": "ProfileVault" },
+  "skills": [
+    "./skills/profilevault",
+    "./skills/account-setup",
+    "./skills/job-planner",
+    "./skills/health-check",
+    "./skills/flow-author"
+  ],
+  "mcpServers": "./mcp.example.json"
+}
