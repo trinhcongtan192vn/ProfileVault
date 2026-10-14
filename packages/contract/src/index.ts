@@ -10,3 +10,4 @@ export * from './clock.js';
 export * from './secrets.js';
 export * from './fury.js';
 export * from './health.js';
+export * from './consistency.js';

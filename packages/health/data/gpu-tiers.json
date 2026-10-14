@@ -1,0 +1,10 @@
+{
+  "version": "2026-10-14",
+  "note": "Hạng GPU 1 (yếu) → 4 (mạnh) theo mẫu regex trên tên renderer (SPEC-02 B2). Không khớp → không xác định.",
+  "tiers": [
+    { "tier": 4, "patterns": ["RTX 50[6-9]0", "RTX 4(07|08|09)0", "RTX 40[7-9]0", "RTX 3(08|09)0", "RX 7[89]00", "RX 9070", "Radeon Pro W", "A100", "H100"] },
+    { "tier": 3, "patterns": ["RTX 50[1-5]0", "RTX 40[5-6]0", "RTX 30[5-7]0", "RTX 20[6-8]0", "GTX 16[5-6]0", "RX 6[6-9]00", "RX 7[5-6]00", "Arc A7", "Apple M[1-4] (Pro|Max|Ultra)"] },
+    { "tier": 2, "patterns": ["GTX 10[5-8]0", "GTX 9[6-8]0", "RX 5[5-7]00", "RX 6[4-5]00", "Arc A3", "Apple M[1-4]\\b", "Iris Xe", "Radeon 780M", "Radeon 680M"] },
+    { "tier": 1, "patterns": ["Intel\\(R\\) (UHD|HD) Graphics", "Intel Iris Plus", "Radeon Vega", "Radeon\\(TM\\) Graphics", "Mali", "Adreno", "SwiftShader", "Basic Display", "llvmpipe"] }
+  ]
+}

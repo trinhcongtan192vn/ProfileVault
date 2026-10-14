@@ -1,6 +1,6 @@
 # Tiến độ triển khai ProfileVault
 
-**Cập nhật:** 2026-10-14 (sau 003) · **Giai đoạn:** M0 · **Nguồn sự thật:** `docs/prd.md` (= `profilevault-prd.md`), `docs/architecture.md` (= `profilevault-agent-architecture.md`), `docs/specs/SPEC-00…09`, `docs/specs/SPIKE-ke-hoach.md`.
+**Cập nhật:** 2026-10-14 (sau 004) · **Giai đoạn:** M0 · **Nguồn sự thật:** `docs/prd.md` (= `profilevault-prd.md`), `docs/architecture.md` (= `profilevault-agent-architecture.md`), `docs/specs/SPEC-00…09`, `docs/specs/SPIKE-ke-hoach.md`.
 
 File này để một phiên làm việc mới tiếp tục được từ chỗ dừng. Cập nhật sau mỗi feature.
 
@@ -20,8 +20,8 @@ File này để một phiên làm việc mới tiếp tục được từ chỗ 
 | 001 | Monorepo pnpm, `packages/contract`, `packages/db` (schema + migration SQLite đầy đủ), config, bí mật DPAPI, bus sự kiện, khóa một phiên bản, bootstrap `apps/service` | SPEC-00 toàn bộ | ✅ xong | 66 test; `specs/001-foundation-monorepo/`; thêm `packages/core` (decisions.md) |
 | 002 | `packages/fury-client`: giao diện, adapter HTTP (ánh xạ endpoint `TODO(SPIKE-P2)`), bộ theo dõi trạng thái, FakeFury | SPEC-01; SPEC-09 §3.1 | ✅ xong | 26 test; `specs/002-fury-client/`; endpoint giả định G8 |
 | 003 | `packages/health` phần 1: binding, sự kiện, kiểm proxy theo lịch, ngưỡng, lên mức, hạ mức/dừng R1–R7, detect-suite, đồng hồ giả | SPEC-02 §1–5, §7–10 (trừ §6) | ✅ xong | 27 test; `specs/003-health-levels/`; R1–R7, readiness, proxy check, scheduler, nối bootstrap |
-| 004 | `packages/health` phần 2: chuẩn hóa probe (`TODO(SPIKE-P3)`), 21 luật, checklist HMAC, `packages/host-info` (`TODO(SPIKE-P6)`) | SPEC-02 §6 | 🔄 đang làm | |
-| 005 | `packages/gateway` M0: Fastify loopback, kiểm Host/Origin, phiên dashboard `/auth/open`, toàn bộ `/internal/*`, SSE, audit, mã lỗi HTTP | SPEC-05 §2–4.1, §5.2, §7, §9–11 | ⏳ chưa làm | |
+| 004 | `packages/health` phần 2: chuẩn hóa probe (`TODO(SPIKE-P3)`), 22 luật (SPEC-02 §6.4 có 22, không phải 21), checklist HMAC, `packages/host-info` (`TODO(SPIKE-P6)`) | SPEC-02 §6 | ✅ xong | 56 test health; `specs/004-consistency-rules/` |
+| 005 | `packages/gateway` M0: Fastify loopback, kiểm Host/Origin, phiên dashboard `/auth/open`, toàn bộ `/internal/*`, SSE, audit, mã lỗi HTTP | SPEC-05 §2–4.1, §5.2, §7, §9–11 | 🔄 đang làm | |
 | 006 | `apps/dashboard` + tray + toast: 8 trang, wizard gắn kênh, khai báo một chạm, biểu đồ, Chờ bạn, Cài đặt | SPEC-07 | ⏳ chưa làm | |
 | 007 | `packages/runner`: Flow contract, `ctx.ui`, humanGate, Runner, lịch + chạy bù, linter `tools/eslint-plugin-pv`; pack `generic/session-check` và `youtube/session-check` với fixture HTML | SPEC-03; SPEC-04 §2.1–2.2, §3, §4 | ⏳ chưa làm | |
 | — | Bước 5: `spikes/` P1–P7 + `docs/specs/SPIKE-bao-cao.md` (mẫu trống) | SPIKE-ke-hoach | ⏳ chưa làm | Không chạy spike |
@@ -38,6 +38,7 @@ Ký hiệu: ⏳ chưa làm · 🔄 đang làm · ✅ xong · ⚠️ xong có ghi
 | Q2 | Định dạng file probe của Fury | SPEC-02 §6.3, SPIKE-P3 | Chờ spike P3; `parseFuryCapture` có `TODO(SPIKE-P3)` |
 | Q3 | Fury có kiểm exit proxy không mở trình duyệt và phân loại ASN không | SPEC-01 §4, SPIKE-P5 | Chờ spike P5; mặc định `asnType = unknown` + `asn_attestations` |
 | Q4 | Đọc GPU/màn hình trên Windows không cần admin | SPIKE-P6 | Chờ spike P6; `host-info` có fallback `unknown` |
+| Q5 | Yêu cầu triển khai ghi "21 luật" nhưng SPEC-02 §6.4 liệt kê 22 (A1–A6, B1–B4, C1–C3, D1–D5, E1–E4) | SPEC-02 §6.4 | Đã cài 22; người duyệt xác nhận |
 
 ## 4. Giả định khi triển khai
 
@@ -62,6 +63,13 @@ Những điểm `docs/` không trả lời; đã chọn phương án nhất quá
 | G16 | Số liệu run cho ngưỡng (`flow_success_rate`, `l2_correct_rate`, `event_count_by_mode`, `no_open_site_changed`) tính từ `health_events` do `recordRunOutcome` ghi, không đọc bảng `runs` | 003 | Health độc lập với Runner |
 | G17 | Phiên bản Fury hiện tại lưu `settings['fury.currentVersion']` do poller cập nhật; chưa biết → `detect_suite_pass` chưa đạt | 003 | SPEC-02 không nói nguồn "phiên bản hiện tại" |
 | G18 | Lịch kiểm proxy: RNG seed, giờ địa phương bằng `Intl` theo `config.ui.timezone`; lượt lỡ khi tắt tiến trình không chạy bù | 003 | SPEC-02 §7 chỉ nêu 4 khung giờ |
+| G19 | Probe: `parseFuryCapture` thử các bộ chuyển đổi; bộ `furyCaptureV1` là giả định `TODO(SPIKE-P3)`; test dùng probe giả dạng chuẩn hóa | 004 | SPIKE-P3 chưa chạy |
+| G20 | host-info: PowerShell CIM + `System.Windows.Forms.Screen`, timeout 3 s, lỗi → mảng rỗng và luật B2/B3 `unknown` | 004 | SPIKE-P6 chưa chạy |
+| G21 | A4: `geolocation` `off`/`auto` → pass; `manual` cần tọa độ exit từ `city-coords.json`, thiếu → `unknown` | 004 | `ExitInfo` không có lat/lon |
+| G22 | A2: múi giờ → quốc gia bằng `timezone-countries.json`; không có → `unknown` | 004 | SPEC-02 không nêu nguồn ánh xạ |
+| G23 | A6: WebRTC IP nội bộ (RFC1918, mDNS) không coi là rò | 004 | SPEC-02 nói "⊆ {exit.ip} hoặc rỗng" không bàn IP nội bộ |
+| G24 | D1/E1 chỉ báo cáo; R2/R3 đã áp ở kiểm proxy (003); R4 loại trừ D1/E1 | 004 | SPEC-02 §4.1 |
+| G25 | Lịch sử sửa luật ghi `settings_history` key `consistency_rule:<id>`; `periodicDays` ở `settings.consistency` | 004 | SPEC-02 chỉ nói "có lịch sử thay đổi" |
 | G7 | Cơ chế seed lần chạy đầu: `registerSeeder` idempotent; 003/004 đăng ký ngưỡng và luật mặc định | 001 | SPEC-00 §11 nói "ghi luật nhất quán và ngưỡng mặc định" nhưng nội dung ở SPEC-02 |
 
 ## 5. TODO(SPIKE-Pn) còn lại
@@ -85,6 +93,14 @@ Cập nhật sau mỗi feature (lệnh: `grep -rn --exclude-dir=dist "TODO(SPIKE
 | SPIKE-P2 | `packages/fury-client/src/testing/fake-fury.ts:158` | // ---- xử lý HTTP (bộ ánh xạ giả định — TODO(SPIKE-P2)) ---- |
 | SPIKE-P2 | `packages/fury-client/test/http-client.test.ts:87` | it('getProfile hợp nhất fallback file cấu hình (TODO(SPIKE-P2)) cho trường còn thiếu', async () => { |
 | SPIKE-P2 | `packages/fury-client/test/version-adapter.test.ts:20` | describe('bộ ánh xạ endpoint mặc định (TODO(SPIKE-P2))', () => { |
+| SPIKE-P3 | `packages/health/src/probe/converters.ts:3` | * TODO(SPIKE-P3): định dạng xuất thật của trang probe Fury chưa biết; `furyCaptureV1Converter` là giả định. |
+| SPIKE-P3 | `packages/health/src/probe/converters.ts:31` | * TODO(SPIKE-P3): giả định trang probe Fury xuất `{ meta: { furyVersion, capturedAt }, fingerprint: { ... } }` |
+| SPIKE-P3 | `packages/health/src/probe/normalize.ts:25` | * `converters` tiêm được (TODO(SPIKE-P3)). |
+| SPIKE-P3 | `packages/health/test/probe.test.ts:13` | describe('chuẩn hóa probe (SPEC-02 §6.3, TODO(SPIKE-P3))', () => { |
+| SPIKE-P6 | `packages/host-info/src/capture.ts:10` | * TODO(SPIKE-P6): xác nhận hai lệnh dưới trả đủ trường trong < 3 giây trên máy đích. |
+| SPIKE-P6 | `packages/host-info/src/parse.ts:3` | /** Parse đầu ra `Get-CimInstance Win32_VideoController / Select Name, AdapterRAM / ConvertTo-Json`. TODO(SPIK |
+| SPIKE-P6 | `packages/host-info/src/parse.ts:26` | /** Parse đầu ra `[System.Windows.Forms.Screen]::AllScreens / Select Primary, Bounds / ConvertTo-Json`. TODO(S |
+| SPIKE-P6 | `packages/host-info/test/host-info.test.ts:57` | it.skipIf(process.platform !== 'win32')('đọc máy thật trên Windows trong < 3 s (TODO(SPIKE-P6))', async () =>  |
 
 ## 6. Thay đổi với `docs/`
 

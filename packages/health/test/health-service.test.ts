@@ -87,8 +87,9 @@ describe('sự kiện (spec 003 US2)', () => {
     await h.bundle.health.recordFuryProfileStatus('p1', true, h.clock.nowIso());
     await h.bundle.health.recordFuryProfileStatus('p1', false, h.clock.nowIso());
     await h.bundle.health.recordFuryProfileStatus('p-none', true, h.clock.nowIso());
-    expect(h.bundle.health.listEvents(b.id, { order: 'asc' }).map((e) => e.type)).toEqual(['fury.profile_opened', 'fury.profile_closed']);
-    expect(h.bundle.health.listEvents(undefined)).toHaveLength(2);
+    const types = ['fury.profile_opened', 'fury.profile_closed'];
+    expect(h.bundle.health.listEvents(b.id, { order: 'asc', types }).map((e) => e.type)).toEqual(types);
+    expect(h.bundle.health.listEvents(undefined, { types })).toHaveLength(2);
   });
 
   it('kiểm proxy: ghi đủ trường; lỗi → proxy.check_failed warn; binding lạ → ACCOUNT_NOT_BOUND', async () => {

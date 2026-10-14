@@ -20,3 +20,14 @@ export { PausesRepo } from './repositories/pauses.js';
 export { LevelChangesRepo } from './repositories/level-changes.js';
 export { ProxyChecksRepo } from './repositories/proxy-checks.js';
 export { DetectSuiteRepo, type DetectSuiteRow } from './repositories/detect-suite.js';
+export {
+  AsnAttestationsRepo,
+  ChecklistsRepo,
+  ConsistencyRulesRepo,
+  ConsistencyRunsRepo,
+  HostSnapshotsRepo,
+  ProbeResultsRepo,
+  type AsnAttestationRow,
+  type ChecklistRow,
+  type ConsistencyRunRow,
+} from './repositories/consistency.js';

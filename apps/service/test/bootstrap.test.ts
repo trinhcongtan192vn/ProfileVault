@@ -25,7 +25,7 @@ describe('bootstrap (spec 001 US5)', () => {
 
     const ctx = await bootstrap({ env, secretStore: secrets, clock, seeders, pidAlive: () => true, startBackground: false });
     expect(ctx.firstRun).toBe(true);
-    expect(ctx.seeded.sort()).toEqual(['custom', 'thresholds']);
+    expect(ctx.seeded.sort()).toEqual(['consistency_rules', 'custom', 'thresholds']);
     expect(ctx.health.getThresholds().L0_to_L1).toHaveLength(7);
     for (const d of [ctx.paths.extensionsDir, ctx.paths.runsDir, ctx.paths.probesDir, ctx.paths.logsDir]) expect(existsSync(d)).toBe(true);
     expect(Buffer.from((await secrets.get('hmac.key')) ?? '', 'base64')).toHaveLength(32);

@@ -42,8 +42,8 @@ describe('ngưỡng và lên mức (SPEC-02 §3)', () => {
     expect(byKind.no_red_events?.met).toBe(true);
     expect(byKind.proxy_stable?.met).toBe(true);
     expect(byKind.detect_suite_pass?.met).toBe(true);
-    expect(byKind.consistency_clear).toMatchObject({ met: false, current: 'chưa có dữ liệu' });
-    expect(r.progress).toBeCloseTo(3 / 7);
+    expect(byKind.consistency_clear?.met).toBe(false); // E2/E3 unknown vì chưa có probe
+    expect(r.progress).toBeCloseTo(4 / 7); // days, uploads, consistency_clear chưa đạt
     expect(r.canPromote).toBe(false);
     let caught: unknown;
     try {

@@ -50,7 +50,8 @@ describe('LevelPolicy R1–R7 (SPEC-02 §4)', () => {
     h.fake.setExit('p1', { ip: '2.2.2.2', country: 'FR', asn: 100, asnType: 'isp' });
     await h.bundle.health.runProxyCheckNow(b.id);
     expect(h.bundle.health.getBinding(b.id)!.level).toBe(1);
-    expect(h.bundle.health.listPauses(b.id, { open: true }).map((p) => p.reason)).toEqual(['proxy_changed']);
+    // R2 mở proxy_changed; A1 (exit FR ≠ thị trường DE) trượt → R4 mở consistency_block
+    expect(h.bundle.health.listPauses(b.id, { open: true }).map((p) => p.reason).sort()).toEqual(['consistency_block', 'proxy_changed']);
     expect(h.bundle.health.listEvents(b.id, { types: ['proxy.country_changed'] })[0]?.payload).toMatchObject({ from: 'DE', to: 'FR' });
 
     const c = await addBinding(h, 2);
@@ -80,8 +81,8 @@ describe('LevelPolicy R1–R7 (SPEC-02 §4)', () => {
     await h.bundle.health.runProxyCheckNow(b.id);
     expect(h.bundle.health.listPauses(a.id, { open: true })).toHaveLength(0);
     expect(h.bundle.health.listPauses(b.id, { open: true })).toHaveLength(0);
-    expect(h.bundle.health.listPauses(a.id)[0]).toMatchObject({ reason: 'duplicate_exit_ip', clearedBy: 'system' });
-    expect(h.bundle.health.listEvents(a.id, { types: ['binding.resumed'] })).toHaveLength(1);
+    expect(h.bundle.health.listPauses(a.id).find((p) => p.reason === 'duplicate_exit_ip')).toMatchObject({ clearedBy: 'system' });
+    expect(h.bundle.health.listEvents(a.id, { types: ['binding.resumed'] }).filter((e) => e.payload.reason === 'duplicate_exit_ip')).toHaveLength(1);
     expect(h.bundle.health.getBinding(a.id)!.level).toBe(0);
   });
 

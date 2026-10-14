@@ -22,6 +22,9 @@
     },
     {
       "path": "../../packages/health"
+    },
+    {
+      "path": "../../packages/host-info"
     }
   ]
 }

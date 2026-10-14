@@ -16,7 +16,8 @@ import {
 } from '@sctech/profilevault-core';
 import { AuditRepo, openDatabase, SettingsRepo, type Database } from '@sctech/profilevault-db';
 import { fromSecretStore, FuryStatusPoller, HttpFuryClient, type FuryClient, type Timers } from '@sctech/profilevault-fury-client';
-import { createHealth, thresholdsSeeder, type HealthBundle, type HealthService } from '@sctech/profilevault-health';
+import { createHealth, type HealthBundle, type HealthService } from '@sctech/profilevault-health';
+import { captureHostSnapshot } from '@sctech/profilevault-host-info';
 
 export const SERVICE_VERSION = '0.1.0';
 
@@ -149,6 +150,9 @@ export async function bootstrap(opts: BootstrapOptions = {}): Promise<ServiceCon
       config: loaded.config,
       audit,
       settings,
+      secrets,
+      probesDir: paths.probesDir,
+      captureHost: () => captureHostSnapshot({ now: () => clock.nowIso() }),
       isFuryReachable: () => pollerRef.lastHealth?.reachable ?? false,
     });
     healthRef.current = healthBundle.health;
@@ -158,7 +162,8 @@ export async function bootstrap(opts: BootstrapOptions = {}): Promise<ServiceCon
     settings.set('schema_version', { migration: database.migration?.current ?? 0 }, 'system');
     if (!settings.has('runner')) settings.set('runner', DEFAULT_RUNNER_SETTINGS, 'system');
     const registry = opts.seeders ?? new SeederRegistry();
-    if (!registry.names().includes('thresholds')) registry.register('thresholds', thresholdsSeeder);
+    if (!registry.names().includes('thresholds')) registry.register('thresholds', healthBundle.thresholdsSeeder);
+    if (!registry.names().includes('consistency_rules')) registry.register('consistency_rules', healthBundle.rulesSeeder);
     const seeded = await registry.run({ database, settings, clock, logger });
 
     // 9. Audit

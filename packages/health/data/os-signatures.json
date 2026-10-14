@@ -1,0 +1,14 @@
+{
+  "version": "2026-10-14",
+  "note": "Chữ ký voices/fonts đặc trưng của từng hệ điều hành (SPEC-02 B4). Persona Windows không được lộ chữ ký macOS/Linux.",
+  "voices": {
+    "macos": ["Alex", "Samantha", "Victoria", "Fred", "Daniel (Enhanced)", "Karen", "Moira", "Tessa", "Rishi", "Kathy", "Zarvox", "Trinoids", "Whisper", "Bells", "Bad News"],
+    "windows": ["Microsoft David", "Microsoft Zira", "Microsoft Mark", "Microsoft Hazel", "Microsoft Susan", "Microsoft Hedda", "Microsoft Hortense"],
+    "linux": ["espeak", "eSpeak", "Festival", "Pico"]
+  },
+  "fonts": {
+    "macos": ["Helvetica Neue", "Lucida Grande", "Menlo", "Apple Chancery", "Apple Color Emoji", "SF Pro", "Geneva", "Monaco", "Chalkboard"],
+    "windows": ["Segoe UI", "Calibri", "Cambria", "Consolas", "Candara", "Corbel", "Microsoft Sans Serif", "Tahoma"],
+    "linux": ["DejaVu Sans", "Liberation Sans", "Ubuntu", "Cantarell", "Noto Color Emoji", "Droid Sans"]
+  }
+}
