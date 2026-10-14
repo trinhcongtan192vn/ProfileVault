@@ -36,3 +36,6 @@ spikes/results/
 Thumbs.db
 *.tmp
 *.swp
+
+# Ghi chép cá nhân của người vận hành (theo dõi spike)
+/Ghi chú*.txt

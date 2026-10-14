@@ -1,2 +1,0 @@
-Ngày/giờ | Sau khởi động lại máy? | Còn đăng nhập? | Đúng kênh? | Xác minh/CAPTCHA/cảnh báo? | Ghi chú
-14/10 23:30 | không | có | có | không | lần đầu
