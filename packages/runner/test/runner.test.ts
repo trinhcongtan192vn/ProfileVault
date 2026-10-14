@@ -117,6 +117,7 @@ describe('Gate và recovery', () => {
     const run = await h.runner.enqueue({ bindingId: b.id, flowId: 'test/gate', mode: 'L2', idempotencyKey: 'l2' });
     await h.runner.tick(); await waitFor(() => h!.runner.getRun(run.id)?.status === 'needs_user');
     expect((await h.fury.getStatus('p1')).open).toBe(true);
+    expect(h.runner.getRun(run.id)!.needsUser).toMatchObject({ reason: 'review_before_final', keepProfileOpen: true, summary: {} });
     await expect(h.runner.resolveGate(run.id, { choice: 'invalid' }, 'user')).rejects.toMatchObject({ code: 'INPUT_INVALID' });
     await expect(h.runner.resolveGate(run.id, { choice: 'done_correct' }, 'client' as 'user')).rejects.toMatchObject({ code: 'FORBIDDEN_ACTION' });
     await h.runner.resolveGate(run.id, { choice: 'done_fixed' }, 'user');

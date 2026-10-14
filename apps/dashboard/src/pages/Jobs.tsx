@@ -1,5 +1,5 @@
 import { useAction } from '../components/ui';
-import type { JobRecord, RunRecord } from '@sctech/profilevault-contract';
+import type { ApiJob, Binding, FlowInfo, JobRecord, RunRecord } from '@sctech/profilevault-contract';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { ColumnDef } from '@tanstack/react-table';
 import { useMemo, useState } from 'react';
@@ -12,6 +12,47 @@ import { formatDateTime, json } from '../lib/format';
 import { RUN_STATUS_LABELS, label } from '../lib/labels';
 import { qk } from '../lib/sse';
 import { GateButtons } from './Inbox';
+
+const UPLOAD_TEMPLATE = JSON.stringify({ video: { path: 'E:\\exports\\video.mp4', sha256: '<sha256 của file>' }, title: 'Tiêu đề', description: 'Mô tả', madeForKids: false }, null, 2);
+
+/** Gửi job từ dashboard (client `dashboard`, SPEC-06 §2): cùng kiểm tra như app ngoài. */
+function SubmitJob() {
+  const qc = useQueryClient();
+  const { toast } = useUi();
+  const flows = useQuery({ queryKey: ['flows'], queryFn: () => get<{ flows: FlowInfo[] }>('/internal/flows') });
+  const bindings = useQuery({ queryKey: qk.bindings, queryFn: () => get<{ bindings: Binding[] }>('/internal/bindings') });
+  const [flowId, setFlowId] = useState('');
+  const [bindingId, setBindingId] = useState('');
+  const [input, setInput] = useState('{}');
+  const submit = useMutation({
+    mutationFn: () => post<ApiJob>('/internal/jobs', { flowId, bindingId, idempotencyKey: `dashboard:${flowId}:${Date.now()}`, input: JSON.parse(input) as unknown }),
+    onSuccess: (j) => { toast(`Đã gửi job ${j.id} (${j.mode ?? 'không chế độ'})`); void qc.invalidateQueries({ queryKey: qk.jobs }); },
+    onError: (e) => toast(errorMessage(e), { kind: 'error' }),
+  });
+  const enabled = (flows.data?.flows ?? []).filter((f) => f.status === 'enabled');
+  return (
+    <Section title="Gửi job">
+      <div className="form-grid">
+        <label className="field">Flow
+          <select value={flowId} onChange={(e) => { setFlowId(e.target.value); setInput(e.target.value === 'youtube/upload' ? UPLOAD_TEMPLATE : '{}'); }}>
+            <option value="">— chọn —</option>
+            {enabled.map((f) => <option key={f.id} value={f.id}>{f.id} (≥ L{f.minLevel}{f.modes.length ? `, ${f.modes.join('/')}` : ''})</option>)}
+          </select>
+        </label>
+        <label className="field">Kênh
+          <select value={bindingId} onChange={(e) => setBindingId(e.target.value)}>
+            <option value="">— chọn —</option>
+            {(bindings.data?.bindings ?? []).map((b) => <option key={b.id} value={b.id}>{b.displayName} (L{b.level})</option>)}
+          </select>
+        </label>
+        <label className="field wide">Input (JSON theo schema của flow)
+          <textarea rows={6} className="mono" value={input} onChange={(e) => setInput(e.target.value)} />
+        </label>
+      </div>
+      <button className="primary" disabled={!flowId || !bindingId || submit.isPending} onClick={() => submit.mutate()}>Gửi</button>
+    </Section>
+  );
+}
 
 export function Jobs() {
   const [status, setStatus] = useState('');
@@ -31,6 +72,7 @@ export function Jobs() {
   return (
     <div>
       <h1>Job &amp; run</h1>
+      <SubmitJob />
       <div className="filters">
         <select value={status} onChange={(e) => setStatus(e.target.value)}>
           <option value="">Mọi trạng thái</option>

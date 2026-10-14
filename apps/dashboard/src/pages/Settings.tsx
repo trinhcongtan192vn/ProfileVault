@@ -283,6 +283,29 @@ function AsnSection() {
   );
 }
 
+function P4Toggle() {
+  const { confirm } = useUi();
+  const q = useQuery({ queryKey: ['settings', 'p4'], queryFn: () => get<{ passed: boolean }>('/internal/settings/p4') });
+  const save = useSave((passed: boolean) => put('/internal/settings/p4', { passed }), [['settings', 'p4'], ['flows']], 'Đã lưu trạng thái spike P4');
+  if (!q.data) return <Loading />;
+  const toggle = async () => {
+    const next = !q.data.passed;
+    const ok = await confirm({
+      title: next ? 'Xác nhận spike P4 đạt?' : 'Khóa lại flow upload?',
+      body: next ? 'Chỉ xác nhận khi đã upload thử 3 video riêng tư qua CDP trên kênh test, đúng metadata và video ID, và 7 ngày không có xác minh/CAPTCHA/cảnh báo (SPIKE-ke-hoach P4). Sau đó flow youtube/upload (L2/L3) chạy được cho kênh đủ mức.' : 'Flow có chế độ L2/L3 sẽ bị từ chối với FLOW_DISABLED (p4_not_passed).',
+      confirmLabel: next ? 'P4 đã đạt' : 'Khóa lại',
+      danger: next,
+    });
+    if (ok) save.mutate(next);
+  };
+  return (
+    <div className="card">
+      <strong>Spike P4 (CDP + YouTube Studio):</strong> {q.data.passed ? 'đã xác nhận đạt — flow upload L2/L3 được chạy' : 'chưa đạt — flow upload L2/L3 đang khóa'}{' '}
+      <button onClick={() => void toggle()}>{q.data.passed ? 'Khóa lại' : 'Xác nhận P4 đạt…'}</button>
+    </div>
+  );
+}
+
 function RunnerSection() {
   const q = useQuery({ queryKey: ['settings', 'runner'], queryFn: () => get<{ runner: RunnerSettings }>('/internal/settings/runner') });
   const [v, setV] = useState<RunnerSettings | null>(null);
@@ -299,6 +322,7 @@ function RunnerSection() {
   );
   return (
     <Section title="Runner">
+      <P4Toggle />
       <div className="form-grid">
         {num('maxConcurrentIdle', 'Đồng thời tối đa khi máy rảnh')}
         {num('maxConcurrentBusy', 'Đồng thời tối đa khi máy bận')}

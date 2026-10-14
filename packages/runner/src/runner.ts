@@ -20,6 +20,21 @@ function sitesFor(flowId: string, manifest: string[], platformSites: string[] | 
   if (!flowId.startsWith('generic/')) return manifest;
   return [...new Set([...(platformSites ?? manifest), ...manifest.filter((h) => h === '127.0.0.1' || h === 'localhost')])];
 }
+/** Tóm tắt input để người đối chiếu ở gate L2 (SPEC-07 §4.4): file chỉ còn tên + 12 ký tự đầu SHA-256. */
+function reviewSummary(input: unknown): Record<string, unknown> {
+  const walk = (v: unknown): unknown => {
+    if (Array.isArray(v)) return v.map(walk);
+    if (typeof v === 'object' && v !== null) {
+      const o = v as Record<string, unknown>;
+      if (typeof o.path === 'string' && typeof o.sha256 === 'string') return { ...Object.fromEntries(Object.entries(o).filter(([k]) => k !== 'path' && k !== 'sha256')), file: path.basename(o.path), sha256: o.sha256.slice(0, 12) };
+      return Object.fromEntries(Object.entries(o).map(([k, x]) => [k, walk(x)]));
+    }
+    return v;
+  };
+  const out = walk(input);
+  return typeof out === 'object' && out !== null && !Array.isArray(out) ? (out as Record<string, unknown>) : { input: out };
+}
+
 /** Setting chỉ người đặt (dashboard): spike P4 đạt → mở khóa flow có chế độ L2/L3. */
 export const P4_SETTING = 'spike.p4Passed';
 interface ActiveRun { probeUrl?: string; promise: Promise<void>; page?: Page; browser?: Browser; owned: boolean; cancel?: PvError; gate?: { resolve(value: GateResult): void; reject(error: Error): void }; gateSince?: number; gateTime: number; started: number; pauseStep?: () => void; resumeStep?: () => void }
@@ -270,7 +285,7 @@ export class Runner {
       if (seq <= cp.stepIndex) { gateIndex = cp.stepGateEnds[name] ?? gateIndex; return cp.stepResults[name] as T; }
       if (a.cancel) throw a.cancel;
       if (opts.final && job.mode === 'L2') {
-        cp.state.l2Result = await gate({ reason: 'review_before_final', message: 'Kiểm tra và bấm Save trong profile, rồi xác nhận kết quả', choices: [{ id: 'done_correct', label: 'Đúng hết, tôi đã bấm' }, { id: 'done_fixed', label: 'Phải sửa tay rồi mới bấm' }, { id: 'cancel', label: 'Hủy' }], keepProfileOpen: true });
+        cp.state.l2Result = await gate({ reason: 'review_before_final', message: 'Đã điền xong, mời kiểm tra trong cửa sổ profile và bấm Save, rồi xác nhận kết quả', summary: reviewSummary(this.store.input(run.jobId)), choices: [{ id: 'done_correct', label: 'Đúng hết, tôi đã bấm' }, { id: 'done_fixed', label: 'Phải sửa tay rồi mới bấm' }, { id: 'cancel', label: 'Hủy' }], keepProfileOpen: true });
         cp.stepIndex = seq; cp.activeStep = null; cp.stepGateEnds[name] = gateIndex; save();
         this.store.step(id, seq, { name, status: 'skipped', attempts: 0, startedAt: this.d.clock.nowIso(), finishedAt: this.d.clock.nowIso() });
         return undefined as T;
