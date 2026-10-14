@@ -31,6 +31,8 @@ function Invoke-Prepare([string]$pnpmPath, [string]$action) {
   $stderrFile = Join-Path $localDataDir 'prepare-error.log'
   $command = '/d /s /c ""' + $pnpmPath + '" ' + $action + '"'
   $process = Start-Process -FilePath $env:ComSpec -ArgumentList $command -WorkingDirectory $repoRoot -WindowStyle Hidden -RedirectStandardOutput $stdoutFile -RedirectStandardError $stderrFile -PassThru
+  # PowerShell 5.1: không giữ handle thì ExitCode = $null sau khi tiến trình thoát
+  $null = $process.Handle
   while (-not $process.HasExited) { [System.Windows.Forms.Application]::DoEvents(); Start-Sleep -Milliseconds 100; $process.Refresh() }
   $process.WaitForExit()
   if ($process.ExitCode -ne 0) { throw "Không chuẩn bị được ứng dụng. Xem chi tiết tại $stderrFile và $stdoutFile." }
@@ -69,6 +71,7 @@ try {
   if (Test-Path -LiteralPath $readyFile) { Remove-Item -LiteralPath $readyFile }
   $main = Join-Path $repoRoot 'apps\service\dist\main.js'
   $service = Start-Process -FilePath $node.Source -ArgumentList ('"' + $main + '"') -WorkingDirectory $repoRoot -WindowStyle Hidden -RedirectStandardError (Join-Path $localDataDir 'startup-error.log') -PassThru
+  $null = $service.Handle
   Set-Message 'Đang mở ứng dụng…'
   for ($attempt = 0; $attempt -lt 100; $attempt++) {
     [System.Windows.Forms.Application]::DoEvents()
