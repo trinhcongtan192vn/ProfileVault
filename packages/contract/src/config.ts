@@ -14,8 +14,10 @@ export const ConfigSchema = z.object({
       apiBaseUrl: z.string().default('http://127.0.0.1:${FURY_API_PORT}'),
       supportedVersions: z.string().default('>=0.2.21 <0.4.0'),
       dataDir: z.string().nullable().default(null),
+      /** Tự cài Fury bản đã ghim khi máy chưa có (SPEC-00 §11.1). */
+      autoInstall: z.boolean().default(true),
     })
-    .default({ apiBaseUrl: 'http://127.0.0.1:${FURY_API_PORT}', supportedVersions: '>=0.2.21 <0.4.0', dataDir: null }),
+    .default({ apiBaseUrl: 'http://127.0.0.1:${FURY_API_PORT}', supportedVersions: '>=0.2.21 <0.4.0', dataDir: null, autoInstall: true }),
   runner: z
     .object({
       maxConcurrentIdle: z.number().int().min(0).default(6),

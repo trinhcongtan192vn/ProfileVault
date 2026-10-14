@@ -1,4 +1,4 @@
-import { PvError, type Clock, type Config, type FlowInfo, type JobRecord, type RunRecord, type Schedule, type ScheduleInput } from '@sctech/profilevault-contract';
+import { PvError, type Clock, type Config, type FuryInstallStatus, type FlowInfo, type JobRecord, type RunRecord, type Schedule, type ScheduleInput } from '@sctech/profilevault-contract';
 import type { EventBus, Logger, SecretStore } from '@sctech/profilevault-core';
 import type { AuditRepo, Database, SettingsRepo } from '@sctech/profilevault-db';
 import type { FuryClient, FuryStatusPoller, Timers } from '@sctech/profilevault-fury-client';
@@ -86,6 +86,8 @@ export interface GatewayDeps {
   database: Database;
   paths: { probesDir: string };
   runner?: RunnerFacade;
+  /** Bộ tự cài Fury (SPEC-00 §11.1); không có → `/internal/fury/install` báo `disabled`. */
+  furyInstall?: { status(): FuryInstallStatus; ensure(): Promise<FuryInstallStatus> };
   /** Thư mục SPA đã build (apps/dashboard/dist); không có → trang HTML tối thiểu. */
   staticDir?: string;
   serviceVersion?: string;

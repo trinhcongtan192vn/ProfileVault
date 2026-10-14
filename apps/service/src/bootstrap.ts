@@ -15,11 +15,12 @@ import {
   type SecretStore,
 } from '@sctech/profilevault-core';
 import { AuditRepo, openDatabase, SettingsRepo, type Database } from '@sctech/profilevault-db';
-import { fromSecretStore, FuryStatusPoller, HttpFuryClient, type FuryClient, type Timers } from '@sctech/profilevault-fury-client';
+import { fromSecretStore, FuryInstaller, FuryStatusPoller, HttpFuryClient, type FuryClient, type Timers } from '@sctech/profilevault-fury-client';
 import { createHealth, type HealthBundle, type HealthService } from '@sctech/profilevault-health';
 import { createGateway, type Gateway, type RunnerFacade } from '@sctech/profilevault-gateway';
 import { PackLoader, Runner } from '@sctech/profilevault-runner';
 import { captureHostSnapshot } from '@sctech/profilevault-host-info';
+import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { readdirSync, existsSync } from 'node:fs';
@@ -49,6 +50,8 @@ export interface BootstrapOptions {
   runner?: RunnerFacade;
   /** Thư mục SPA đã build; mặc định apps/dashboard/dist cạnh service. */
   staticDir?: string;
+  /** Tiêm bộ tự cài Fury (test); mặc định `FuryInstaller` thật. */
+  furyInstaller?: FuryInstaller;
 }
 
 export interface ServiceContext {
@@ -67,6 +70,7 @@ export interface ServiceContext {
   healthBundle: HealthBundle;
   gateway: Gateway;
   runner: RunnerFacade;
+  furyInstaller: FuryInstaller;
   /** URL gateway khi đã listen. */
   gatewayUrl: string | null;
   firstRun: boolean;
@@ -206,6 +210,27 @@ export async function bootstrap(opts: BootstrapOptions = {}): Promise<ServiceCon
       await ownedRunner.recover();
     }
     const runner = opts.runner ?? ownedRunner!;
+    // Tự cài Fury bản đã ghim khi máy chưa có (SPEC-00 §11.1).
+    // TODO(SPIKE-P2): bật automation API của Fury (FURY_API_PORT cho `fury-agent serve`) + lưu token sau khi P2 xác minh.
+    const furyInstaller =
+      opts.furyInstaller ??
+      new FuryInstaller({
+        localAppData: env.LOCALAPPDATA ?? path.join(os.homedir(), 'AppData', 'Local'),
+        downloadsDir: path.join(paths.localAppData, 'downloads'),
+        clock,
+        logger: logger.child({ pkg: 'fury-installer' }),
+      });
+    const auditRef = audit;
+    let lastInstallState = furyInstaller.status().state;
+    const prevOnStatus = furyInstaller.onStatus;
+    furyInstaller.onStatus = (s) => {
+      prevOnStatus?.(s);
+      if (lastInstallState === 'installing' && s.state === 'ready') {
+        auditRef.append({ actorType: 'system', action: 'fury.installed', detail: { appVersion: s.appVersion, coreVersion: s.coreVersion, pinnedVersion: s.pinnedVersion } });
+      }
+      lastInstallState = s.state;
+    };
+    if (!loaded.config.fury.autoInstall) furyInstaller.disable();
     gateway = await createGateway({
       config: loaded.config,
       clock,
@@ -221,6 +246,7 @@ export async function bootstrap(opts: BootstrapOptions = {}): Promise<ServiceCon
       database,
       paths: { probesDir: paths.probesDir },
       runner,
+      furyInstall: furyInstaller,
       staticDir: opts.staticDir ?? defaultStaticDir(),
       serviceVersion: SERVICE_VERSION,
       startedAt: clock.nowIso(),
@@ -234,6 +260,11 @@ export async function bootstrap(opts: BootstrapOptions = {}): Promise<ServiceCon
       void poller.tickHealth().catch(() => undefined);
       healthBundle.health.start();
       ownedRunner?.start();
+      if (loaded.config.fury.autoInstall) {
+        void furyInstaller.ensure().then((s) => {
+          if (s.state === 'ready') void pollerRef.tickHealth().catch(() => undefined);
+        });
+      }
     }
 
     let stopped = false;
@@ -253,6 +284,7 @@ export async function bootstrap(opts: BootstrapOptions = {}): Promise<ServiceCon
       healthBundle,
       gateway,
       runner,
+      furyInstaller,
       gatewayUrl,
       firstRun,
       seeded,

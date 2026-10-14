@@ -215,7 +215,7 @@ Dữ liệu từ CSDL cục bộ, không gửi ra ngoài; xuất CSV; ngưỡng 
 ## 9. Luồng chính
 
 ### 9.1 Lần đầu
-1. Cài Fury; mỗi kênh tạo một profile + proxy tĩnh; tự đăng nhập email của kênh; đặt ngôn ngữ Studio.
+1. Cài ProfileVault — nếu máy chưa có Fury, ProfileVault tự tải và cài Fury bản đã ghim (người dùng không phải cài riêng); mỗi kênh tạo một profile + proxy tĩnh trong Fury; tự đăng nhập email của kênh; đặt ngôn ngữ Studio.
 2. Upload tay như bình thường **ngay từ ngày đầu** (bắt đầu tính thời gian L0).
 3. Khi có M0: cài ProfileVault (chạy nền), bật automation API trong Fury, gắn từng kênh (L0), điền checklist tài khoản, nhập file probe, sửa đến khi hết luật *chặn*, khai báo các upload đã làm.
 
@@ -274,7 +274,7 @@ Không tự nâng. Chạy detect-suite + hồi quy flow trên kênh test → xan
 | Bảo mật | Chỉ loopback; token băm; bí mật qua DPAPI; không log nội dung trang/cookie |
 | Dữ liệu dashboard | Cục bộ, giữ ≥ 12 tháng, xuất CSV |
 | Kiểm tra nhất quán | Các lớp không cần trình duyệt chạy ≤ 30 giây cho 10 binding; không bao giờ tự sửa cấu hình profile |
-| Giấy phép | Fury (AGPL) là tiến trình riêng, không nhúng mã |
+| Giấy phép | Fury (AGPL) là tiến trình riêng, không nhúng mã; ProfileVault tải và cài nguyên bản release chính thức (vấn đề giấy phép khi phân phối do chủ sản phẩm xử lý riêng) |
 | Nền tảng | Windows 10/11; Node 22; Fury ≥ 0.2.21 |
 
 ---

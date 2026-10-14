@@ -17,3 +17,13 @@ export {
   type ProfileConfigFileSource,
 } from './adapter/profile-config-file.js';
 export { furyOffline, isRetryableFuryError, mapHttpStatus, type OfflineReason } from './errors.js';
+export {
+  FURY_RELEASE_PIN,
+  FuryInstaller,
+  defaultInstallerExec,
+  parseAgentVersion,
+  parseCoreVersion,
+  type ExecResult,
+  type FuryInstallerOptions,
+  type InstallerExec,
+} from './installer.js';

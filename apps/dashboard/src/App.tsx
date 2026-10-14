@@ -1,6 +1,7 @@
 import { QueryClientProvider, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 import { BrowserRouter, Route, Routes } from 'react-router-dom';
+import { FuryInstallBanner } from './components/FuryInstallBanner';
 import { TopBar } from './components/TopBar';
 import { UiProvider } from './components/ui';
 import { onSessionExpired } from './lib/api';
@@ -45,6 +46,7 @@ function Shell() {
   return (
     <>
       <TopBar sse={sse} />
+      <FuryInstallBanner />
       {expired && <div className="banner">Phiên dashboard đã hết hạn. Mở lại dashboard từ biểu tượng ProfileVault trên khay hệ thống.</div>}
       <main>
         <AppRoutes />

@@ -50,7 +50,7 @@ Xanh toàn bộ lint + test mới được commit/merge.
 
 1. `docs/` là nguồn sự thật; mã và spec Spec Kit phải khớp `docs/`.
 2. TypeScript strict; mọi dữ liệu vào/ra định nghĩa bằng Zod trong `packages/contract`.
-3. Fury là tiến trình riêng, chỉ gọi qua `FuryClient`; không nhúng mã Fury.
+3. Fury là tiến trình riêng, chỉ gọi qua `packages/fury-client` (`FuryClient`, `FuryInstaller`); không nhúng mã Fury. ProfileVault tự cài Fury bản đã ghim khi máy chưa có (SPEC-00 §11.1), ngoài ra không khởi động/nâng cấp/sửa Fury.
 4. ProfileVault không giữ cookie, mật khẩu, thông tin đăng nhập proxy; bí mật của chính nó qua DPAPI; không log bí mật.
 5. Gateway chỉ bind loopback; kiểm `Host`; không CORS.
 6. Không có thao tác nào đặt nội dung công khai/hẹn giờ công khai; flow chỉ thao tác trang qua `ctx.ui`; linter chặn thao tác thô.
@@ -60,4 +60,4 @@ Xanh toàn bộ lint + test mới được commit/merge.
 10. Mọi feature có test (unit/integration theo SPEC-09); không merge khi test đỏ.
 11. Tài liệu tiếng Việt, identifier tiếng Anh.
 
-Không commit `secrets.bin`, CSDL, artifact run. Không cài/gọi Fury thật, không truy cập YouTube trong phiên phát triển.
+Không commit `secrets.bin`, CSDL, artifact run. Test không gọi Fury thật hay mạng (FakeFury, bộ cài giả); không truy cập YouTube trong phiên phát triển.

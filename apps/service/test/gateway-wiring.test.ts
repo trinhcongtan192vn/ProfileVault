@@ -40,6 +40,10 @@ describe('bootstrap + gateway (spec 005 T015)', () => {
       expect(sys.status).toBe(200);
       expect((await sys.json()) as { bindings: number }).toMatchObject({ bindings: 0 });
       expect(ctx.audit.list({ action: 'dashboard.login' })).toHaveLength(1);
+      // Nền tắt → tự cài Fury chưa chạy; trạng thái đọc được qua /internal/fury/install
+      const inst = await fetch(`${ctx.gatewayUrl}/internal/fury/install`, { headers: { cookie } });
+      expect(inst.status).toBe(200);
+      expect(await inst.json()).toMatchObject({ state: 'idle', pinnedVersion: '0.3.22' });
     } finally {
       const url = ctx.gatewayUrl!;
       await ctx.shutdown();

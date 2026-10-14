@@ -19,7 +19,9 @@ TypeScript suy ra từ Zod, không định nghĩa kiểu trùng ở nơi khác.
 ### III. Fury là tiến trình riêng, chỉ qua `FuryClient`
 Fury (AGPL) là tiến trình riêng. Mọi package chỉ gọi Fury qua giao diện `FuryClient`
 (`packages/fury-client`); KHÔNG ĐƯỢC nhúng mã Fury, KHÔNG ĐƯỢC gọi HTTP tới Fury từ nơi khác.
-ProfileVault không khởi động, cài đặt, nâng cấp hay sửa cấu hình profile trong Fury.
+Ngoại lệ duy nhất về cài đặt: khi máy chưa có Fury, ProfileVault tự cài **bản đã ghim** (bộ cài +
+core tải từ GitHub release chính thức, kiểm SHA-256 và kích thước trước khi chạy; SPEC-00 §11.1).
+Ngoài việc đó ProfileVault không khởi động, nâng cấp, gỡ hay sửa cấu hình profile trong Fury.
 
 ### IV. Không giữ bí mật của profile; bí mật riêng qua DPAPI
 ProfileVault KHÔNG ĐƯỢC nhận, lưu hay log cookie, mật khẩu, thông tin đăng nhập proxy.
@@ -80,8 +82,9 @@ không trả lời → chọn phương án nhất quán với kiến trúc, ghi 
 "Giả định khi triển khai") → `/speckit-plan` (không đổi stack) → `/speckit-tasks` →
 `/speckit-analyze` (sửa mâu thuẫn trước khi code) → `/speckit-implement` ↔ `/speckit-converge`
 tới khi xong → lint + test xanh → commit `feat(NNN): <tên>` → cập nhật `docs/progress.md`.
-Commit nhỏ; không commit `secrets.bin`, CSDL, artifact run. Trong phiên phát triển không cài
-Fury, không gọi Fury thật, không truy cập YouTube.
+Commit nhỏ; không commit `secrets.bin`, CSDL, artifact run. Test không gọi Fury thật hay mạng
+(dùng FakeFury, bộ cài giả); trong phiên phát triển không truy cập YouTube. Fury thật chỉ được
+cài/chạy trên máy cho spike do người vận hành làm.
 
 ## Governance
 
@@ -92,4 +95,4 @@ nghĩa lại nguyên tắc, MINOR khi thêm nguyên tắc hoặc mở rộng đ�
 `/speckit-plan` và `/speckit-analyze` PHẢI kiểm tra tuân thủ từng nguyên tắc; vi phạm MUST là
 CRITICAL và phải sửa spec/plan/tasks, không được làm mềm nguyên tắc.
 
-**Version**: 1.0.0 | **Ratified**: 2026-10-14 | **Last Amended**: 2026-10-14
+**Version**: 2.0.0 | **Ratified**: 2026-10-14 | **Last Amended**: 2026-10-14

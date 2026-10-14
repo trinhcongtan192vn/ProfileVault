@@ -16,6 +16,7 @@ import {
   ProbeJsonBodySchema,
   PvError,
   UpdateBindingInputSchema,
+  type FuryInstallStatus,
   type FuryProfileListItem,
   type FuryStatus,
 } from '@sctech/profilevault-contract';
@@ -28,6 +29,20 @@ export function registerCoreRoutes(app: FastifyInstance, deps: GatewayDeps): voi
   const { health } = deps;
 
   // ---- Fury ----
+  const installStatus = (): FuryInstallStatus =>
+    deps.furyInstall?.status() ?? { state: 'disabled', step: null, pinnedVersion: '', appVersion: null, coreVersion: null, progress: null, error: null, updatedAt: deps.clock.nowIso() };
+  app.get('/internal/fury/install', async () => installStatus());
+  /** Thử cài lại (nút trên dashboard); chạy nền, trả trạng thái ngay. */
+  app.post('/internal/fury/install', async (_req, reply) => {
+    const inst = deps.furyInstall;
+    if (!inst || inst.status().state === 'disabled') throw new PvError('FORBIDDEN_ACTION', 'Tự cài Fury đang tắt (config fury.autoInstall = false)', { reason: 'auto_install_disabled' });
+    if (inst.status().state === 'unsupported') throw new PvError('FORBIDDEN_ACTION', 'Tự cài Fury chỉ hỗ trợ Windows', { reason: 'platform_unsupported' });
+    void inst.ensure().then((s) => {
+      if (s.state === 'ready') void deps.poller.tickHealth().catch(() => undefined);
+    });
+    deps.audit.append({ actorType: 'user', action: 'fury.install_requested' });
+    return reply.code(202).send(installStatus());
+  });
   app.get('/internal/fury', async (): Promise<FuryStatus> => {
     const h = deps.poller.lastHealth ?? (await deps.fury.health());
     let capabilities = null;

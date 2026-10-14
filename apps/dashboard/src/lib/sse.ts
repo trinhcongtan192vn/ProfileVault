@@ -6,6 +6,7 @@ export const qk = {
   inbox: ['inbox'] as const,
   system: ['system'] as const,
   fury: ['fury'] as const,
+  furyInstall: ['fury', 'install'] as const,
   bindings: ['bindings'] as const,
   binding: (id: string) => ['binding', id] as const,
   readiness: (id: string) => ['readiness', id] as const,

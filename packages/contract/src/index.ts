@@ -9,6 +9,7 @@ export * from './bus-events.js';
 export * from './clock.js';
 export * from './secrets.js';
 export * from './fury.js';
+export * from './fury-install.js';
 export * from './health.js';
 export * from './consistency.js';
 export * from './internal-api.js';

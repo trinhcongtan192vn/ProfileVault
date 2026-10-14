@@ -6,7 +6,9 @@ File này để một phiên làm việc mới tiếp tục được từ chỗ 
 
 **Điểm dừng hiện tại:** code M0 (001–007) xong và đã commit/push; `pnpm build`, `pnpm lint`, `pnpm test` xanh
 (255 Vitest + 7 Playwright fixture). 006 còn task T015 là nghiệm thu desktop Windows bằng tay (tray, toast, autostart).
-Feature 008 (onboarding tự tải/cài Fury) đã **bỏ** theo yêu cầu người dùng; quy tắc "không cài Fury" giữ nguyên.
+Feature 008 cũ (onboarding hướng dẫn) đã bỏ. Thay bằng **tự cài Fury** (SPEC-00 §11.1, constitution 2.0.0): service tự tải + cài Fury 0.3.22
+(ghim SHA-256) khi máy chưa có, dashboard có banner tiến độ/thử lại. Máy dev này đã cài Fury 0.3.22 + core 155.0.8059.39 (2026-10-14).
+Còn `TODO(SPIKE-P2)`: bật automation API của Fury (`FURY_API_PORT`) và lưu token.
 Chưa chạy Fury/YouTube thật, đã chạy P6 (đạt); chưa chạy P1–P5, P7, chưa đủ điều kiện phát hành M0/live.
 Không bắt đầu M1 khi P4 chưa đạt (SPIKE-ke-hoach "Thứ tự").
 
@@ -27,6 +29,7 @@ Không bắt đầu M1 khi P4 chưa đạt (SPIKE-ke-hoach "Thứ tự").
 | 002 | `packages/fury-client`: giao diện, adapter HTTP (ánh xạ endpoint `TODO(SPIKE-P2)`), bộ theo dõi trạng thái, FakeFury | SPEC-01; SPEC-09 §3.1 | ✅ xong | 26 test; `specs/002-fury-client/`; endpoint giả định G8 |
 | 003 | `packages/health` phần 1: binding, sự kiện, kiểm proxy theo lịch, ngưỡng, lên mức, hạ mức/dừng R1–R7, detect-suite, đồng hồ giả | SPEC-02 §1–5, §7–10 (trừ §6) | ✅ xong | 27 test; `specs/003-health-levels/`; R1–R7, readiness, proxy check, scheduler, nối bootstrap |
 | 004 | `packages/health` phần 2: chuẩn hóa probe (`TODO(SPIKE-P3)`), 22 luật (SPEC-02 §6.4 có 22, không phải 21), checklist HMAC, `packages/host-info` (P6 đã xác minh) | SPEC-02 §6 | ✅ xong | 56 test health; `specs/004-consistency-rules/` |
+| 008 | Tự cài Fury: `FuryInstaller` (`packages/fury-client`), `GET/POST /internal/fury/install`, banner dashboard, `config.fury.autoInstall` | SPEC-00 §11.1 | ✅ xong | 8 test installer + wiring; quyết định trong decisions.md |
 | 005 | `packages/gateway` M0: Fastify loopback, kiểm Host/Origin, phiên dashboard `/auth/open`, toàn bộ `/internal/*`, SSE, audit, mã lỗi HTTP | SPEC-05 §2–4.1, §5.2, §7, §9–11 | ✅ xong | 21 test; `specs/005-gateway-internal/`; Runner facade chờ 007 |
 | 006 | `apps/dashboard` + tray + toast: 8 trang, wizard gắn kênh, khai báo một chạm, biểu đồ, Chờ bạn, Cài đặt | SPEC-07 | ⚠️ xong code | 17/18 task; T015 còn nghiệm thu desktop. Smoke Chromium đã kiểm wizard 2 kênh, upload/undo/SSE/CAPTCHA/CSV |
 | 007 | `packages/runner`: Flow contract, `ctx.ui`, humanGate, Runner, lịch + chạy bù, linter `tools/eslint-plugin-pv`; pack `generic/session-check` và `youtube/session-check` với fixture HTML | SPEC-03; SPEC-04 §2.1–2.2, §3, §4 | ✅ xong code | 15/15 task; Runner thật nối bootstrap/gateway; CDP Chromium thật qua FakeFury, không Fury thật |

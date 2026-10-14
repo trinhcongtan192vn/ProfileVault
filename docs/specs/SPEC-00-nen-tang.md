@@ -104,7 +104,7 @@ Pack người dùng đặt ở `%APPDATA%\ProfileVault\extensions\flows\<pack>\`
 ```json
 {
   "gateway": { "host": "127.0.0.1", "port": 50410 },
-  "fury": { "apiBaseUrl": "http://127.0.0.1:${FURY_API_PORT}", "supportedVersions": ">=0.2.21 <0.4.0", "dataDir": null },
+  "fury": { "apiBaseUrl": "http://127.0.0.1:${FURY_API_PORT}", "supportedVersions": ">=0.2.21 <0.4.0", "dataDir": null, "autoInstall": true },
   "runner": { "maxConcurrentIdle": 6, "maxConcurrentBusy": 3, "ramPerProfileMb": 500, "profileBusyTimeoutMinutes": 360, "humanGateTimeoutHours": 24 },
   "limits": { "uploadsPerAccountPerDay": 10 },
   "retention": { "runArtifactsDays": 30, "dataMonths": 12 },
@@ -385,5 +385,16 @@ Dashboard nhận cập nhật thời gian thực qua Server-Sent Events `GET /in
 ## 11. Đóng gói và cài đặt
 
 - Phân phối dạng thư mục gồm `node.exe` (Node 22) + mã đã build + dashboard tĩnh; trình cài đặt NSIS tạo lối tắt và khóa tự khởi động `HKCU\Software\Microsoft\Windows\CurrentVersion\Run`.
-- Lần chạy đầu: tạo thư mục §5, khởi tạo CSDL, sinh khóa HMAC, ghi luật nhất quán và ngưỡng mặc định, mở dashboard trang "Kết nối Fury".
+- Lần chạy đầu: tạo thư mục §5, khởi tạo CSDL, sinh khóa HMAC, ghi luật nhất quán và ngưỡng mặc định, tự cài Fury nếu chưa có (§11.1), mở dashboard trang "Kết nối Fury".
 - Một phiên bản chạy tại một thời điểm (khóa file `%APPDATA%\ProfileVault\service.lock`).
+
+### 11.1 Tự cài Fury
+
+Người dùng chỉ cài ProfileVault; Fury được cài kèm như phần mềm antidetect thông thường.
+
+- **Bản ghim**: `FURY_RELEASE_PIN` trong `packages/fury-client/src/installer.ts` — phiên bản, URL, SHA-256 và kích thước của `fury-<v>-windows-x64-setup.exe` và `fury-core-<v>-windows-x64.tar.xz` từ https://github.com/furyteamtop/fury-antidetect-browser/releases (lấy từ `SHA256SUMS` của release). Hiện ghim **0.3.22** (core Chromium 155.0.8059.39). Bản ghim phải nằm trong `config.fury.supportedVersions`.
+- **Khi nào**: mỗi lần dịch vụ khởi động (nền bật) và khi người dùng bấm "Thử lại" trên dashboard, nếu `config.fury.autoInstall = true` (mặc định). Chỉ Windows.
+- **Cách cài**: thiếu `%LOCALAPPDATA%\Fury\fury-agent.exe` → tải bộ cài vào `%LOCALAPPDATA%\ProfileVault\downloads\`, kiểm kích thước + SHA-256, chạy `setup.exe /S` (NSIS per-user, không cần admin). `fury-agent install-core` không báo core → tải core, kiểm, chạy `fury-agent install-core <file>`. Xóa file tải sau khi cài. File không khớp → xóa, không chạy, báo lỗi.
+- **Không bao giờ**: gỡ, hạ bản hay ghi đè Fury đã có; tự nâng cấp (Fury có nút Update riêng); mở profile; đọc dữ liệu trong `%APPDATA%\Fury`.
+- **Trạng thái**: `GET /internal/fury/install` (`FuryInstallStatus`: idle/checking/downloading/installing/ready/failed/unsupported/disabled + tiến độ); `POST /internal/fury/install` thử lại (202). Dashboard hiện banner khi đang tải/cài hoặc lỗi. Cài xong ghi audit `fury.installed`.
+- **Chưa làm (TODO(SPIKE-P2))**: bật automation API của Fury (`FURY_API_PORT` cho `fury-agent serve`) và lưu token — chờ P2 xác minh cách Fury desktop khởi động agent.
