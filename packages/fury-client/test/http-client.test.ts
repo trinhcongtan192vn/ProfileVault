@@ -136,7 +136,6 @@ describe('HttpFuryClient (SPEC-01)', () => {
     expect(fake.launchCount('p1')).toBe(0);
 
     fake.setOpen('p1', false);
-    fake.failNext(1); // health thử lại được nên vẫn qua; nhưng ta đặt lỗi vào launch bằng cách xếp sau
     const ok = await client().launch('p1', { cdp: true });
     expect(ok.cdpEndpoint).toMatch(/^ws:\/\/127\.0\.0\.1/);
     expect(fake.isOpen('p1')).toBe(true);
@@ -146,20 +145,16 @@ describe('HttpFuryClient (SPEC-01)', () => {
   });
 
   it('launch gặp 500 → không thử lại, FURY_OFFLINE', async () => {
-    const c = client();
-    // health + getStatus thành công, launch thất bại: xếp 1 lỗi sau 2 request đầu bằng latch
-    const original = fake.requests().length;
-    void original;
+    // request 1 = health, 2 = getStatus (thành công); request 3 = launch → 500
     let count = 0;
     const fetchFn: typeof fetch = async (input, init) => {
       count++;
       if (count === 3) return new Response('{"error":"boom"}', { status: 500 });
       return fetch(input, init);
     };
-    const c2 = client({ fetch: fetchFn });
-    await expectPv(c2.launch('p1', { cdp: true }), 'FURY_OFFLINE', 'server');
+    await expectPv(client({ fetch: fetchFn }).launch('p1', { cdp: true }), 'FURY_OFFLINE', 'server');
     expect(timers.sleeps).toEqual([]);
-    void c;
+    expect(count).toBe(3);
   });
 
   it('timeout → FURY_OFFLINE timeout (fetch treo tôn trọng abort)', async () => {
