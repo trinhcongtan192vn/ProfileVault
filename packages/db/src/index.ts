@@ -31,3 +31,4 @@ export {
   type ChecklistRow,
   type ConsistencyRunRow,
 } from './repositories/consistency.js';
+export { ClientsRepo, stripHash, type ClientRow } from './repositories/clients.js';

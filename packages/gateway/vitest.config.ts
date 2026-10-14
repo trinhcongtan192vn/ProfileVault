@@ -1,5 +1,5 @@
 import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
-  test: { name: 'profilevault-gateway', include: ['test/**/*.test.ts'], passWithNoTests: true },
+  test: { name: 'gateway', include: ['test/**/*.test.ts'], testTimeout: 20_000 },
 });

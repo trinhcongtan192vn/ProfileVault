@@ -16,6 +16,7 @@
     "@sctech/profilevault-core": "workspace:*",
     "@sctech/profilevault-db": "workspace:*",
     "@sctech/profilevault-fury-client": "workspace:*",
+    "@sctech/profilevault-gateway": "workspace:*",
     "@sctech/profilevault-health": "workspace:*",
     "@sctech/profilevault-host-info": "workspace:*"
   },

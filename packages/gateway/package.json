@@ -1,8 +1,7 @@
 {
   "name": "@sctech/profilevault-gateway",
   "version": "0.1.0",
-  "private": true,
-  "description": "Gateway (khung; SPEC-05 ở feature 005)",
+  "description": "ProfileVault Gateway: REST loopback cho dashboard (SPEC-05 M0)",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -12,9 +11,26 @@
       "default": "./dist/index.js"
     }
   },
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build": "tsc -b",
-    "test": "vitest run --passWithNoTests"
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@fastify/cookie": "^11.1.0",
+    "@fastify/multipart": "^10.1.0",
+    "@fastify/static": "^10.1.0",
+    "@sctech/profilevault-contract": "workspace:*",
+    "@sctech/profilevault-core": "workspace:*",
+    "@sctech/profilevault-db": "workspace:*",
+    "@sctech/profilevault-fury-client": "workspace:*",
+    "@sctech/profilevault-health": "workspace:*",
+    "argon2": "^0.45.0",
+    "drizzle-orm": "^0.45.4",
+    "fastify": "^5.12.0",
+    "zod": "^4.6.0"
   },
   "devDependencies": {
     "typescript": "~5.9.3",

@@ -38,6 +38,14 @@ export default tseslint.config(
     },
   },
   {
+    // Test: cho phép `res.json() as T` và `expect.any(...)` (any) — không áp cho mã sản phẩm
+    files: ['**/test/**/*.ts'],
+    rules: {
+      '@typescript-eslint/no-unnecessary-type-assertion': 'off',
+      '@typescript-eslint/no-unsafe-assignment': 'off',
+    },
+  },
+  {
     files: ['**/*.js', '**/*.mjs', '**/*.cjs'],
     ...tseslint.configs.disableTypeChecked,
   },

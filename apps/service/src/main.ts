@@ -15,6 +15,7 @@ export async function main(): Promise<number> {
   }
 
   return new Promise<number>((resolve) => {
+    if (ctx.gatewayUrl) console.log(`Dashboard: ${ctx.gateway.createOpenUrl()}`);
     const stop = (signal: string) => {
       ctx.logger.info('nhận tín hiệu dừng', { signal });
       ctx

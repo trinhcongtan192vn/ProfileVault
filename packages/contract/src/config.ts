@@ -5,7 +5,8 @@ export const ConfigSchema = z.object({
   gateway: z
     .object({
       host: z.string().default('127.0.0.1'),
-      port: z.number().int().min(1).max(65535).default(50410),
+      /** 0 = hệ điều hành chọn cổng (chỉ dùng cho dev/test). */
+      port: z.number().int().min(0).max(65535).default(50410),
     })
     .default({ host: '127.0.0.1', port: 50410 }),
   fury: z

@@ -25,6 +25,9 @@
     },
     {
       "path": "../../packages/host-info"
+    },
+    {
+      "path": "../../packages/gateway"
     }
   ]
 }

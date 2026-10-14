@@ -17,7 +17,10 @@ import {
 import { AuditRepo, openDatabase, SettingsRepo, type Database } from '@sctech/profilevault-db';
 import { fromSecretStore, FuryStatusPoller, HttpFuryClient, type FuryClient, type Timers } from '@sctech/profilevault-fury-client';
 import { createHealth, type HealthBundle, type HealthService } from '@sctech/profilevault-health';
+import { createGateway, type Gateway, type RunnerFacade } from '@sctech/profilevault-gateway';
 import { captureHostSnapshot } from '@sctech/profilevault-host-info';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 export const SERVICE_VERSION = '0.1.0';
 
@@ -38,6 +41,12 @@ export interface BootstrapOptions {
   fury?: FuryClient;
   /** Khởi động poller + lịch nền (mặc định true; test đặt false). */
   startBackground?: boolean;
+  /** Gateway lắng nghe cổng (mặc định = startBackground). */
+  listen?: boolean;
+  /** Runner facade (007); mặc định NoRunner. */
+  runner?: RunnerFacade;
+  /** Thư mục SPA đã build; mặc định apps/dashboard/dist cạnh service. */
+  staticDir?: string;
 }
 
 export interface ServiceContext {
@@ -54,6 +63,9 @@ export interface ServiceContext {
   poller: FuryStatusPoller;
   health: HealthService;
   healthBundle: HealthBundle;
+  gateway: Gateway;
+  /** URL gateway khi đã listen. */
+  gatewayUrl: string | null;
   firstRun: boolean;
   seeded: string[];
   shutdown(): Promise<void>;
@@ -82,6 +94,7 @@ export async function bootstrap(opts: BootstrapOptions = {}): Promise<ServiceCon
   let logger: Logger | undefined;
   let poller: FuryStatusPoller | undefined;
   let healthBundle: HealthBundle | undefined;
+  let gateway: Gateway | undefined;
   try {
     // 2. Cấu hình
     const loaded = loadConfig(paths, env);
@@ -175,7 +188,30 @@ export async function bootstrap(opts: BootstrapOptions = {}): Promise<ServiceCon
     });
     logger.info('dịch vụ đã khởi động', { version: SERVICE_VERSION, firstRun, pid: process.pid });
 
-    // 10. Nền: poller Fury + lịch kiểm proxy
+    // 10. Gateway (SPEC-05)
+    gateway = await createGateway({
+      config: loaded.config,
+      clock,
+      timers: opts.timers,
+      bus,
+      logger: logger.child({ pkg: 'gateway' }),
+      health: healthBundle.health,
+      fury,
+      poller,
+      secrets,
+      audit,
+      settings,
+      database,
+      paths: { probesDir: paths.probesDir },
+      runner: opts.runner,
+      staticDir: opts.staticDir ?? defaultStaticDir(),
+      serviceVersion: SERVICE_VERSION,
+      startedAt: clock.nowIso(),
+    });
+    let gatewayUrl: string | null = null;
+    if (opts.listen ?? opts.startBackground !== false) gatewayUrl = await gateway.listen();
+
+    // 11. Nền: poller Fury + lịch kiểm proxy
     if (opts.startBackground !== false) {
       poller.start();
       void poller.tickHealth().catch(() => undefined);
@@ -197,6 +233,8 @@ export async function bootstrap(opts: BootstrapOptions = {}): Promise<ServiceCon
       poller,
       health: healthBundle.health,
       healthBundle,
+      gateway,
+      gatewayUrl,
       firstRun,
       seeded,
       async shutdown() {
@@ -205,6 +243,7 @@ export async function bootstrap(opts: BootstrapOptions = {}): Promise<ServiceCon
         try {
           pollerRef.stop();
           healthBundle?.health.stop();
+          await gateway?.close();
           audit.append({ actorType: 'system', action: 'system.stopped', detail: { version: SERVICE_VERSION } });
           logger?.info('dịch vụ dừng');
         } finally {
@@ -219,6 +258,7 @@ export async function bootstrap(opts: BootstrapOptions = {}): Promise<ServiceCon
   } catch (err) {
     poller?.stop();
     healthBundle?.health.stop();
+    await gateway?.close().catch(() => undefined);
     database?.close();
     logger?.close();
     lock.release();
@@ -234,4 +274,9 @@ function defaultSecretStore(file: string): SecretStore {
     });
   }
   return new DpapiSecretStore(file);
+}
+
+/** apps/dashboard/dist cạnh apps/service (cả khi chạy từ src/ lẫn dist/). */
+function defaultStaticDir(): string {
+  return path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..', 'dashboard', 'dist');
 }

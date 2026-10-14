@@ -1,6 +1,6 @@
 # Tiến độ triển khai ProfileVault
 
-**Cập nhật:** 2026-10-14 (sau 004) · **Giai đoạn:** M0 · **Nguồn sự thật:** `docs/prd.md` (= `profilevault-prd.md`), `docs/architecture.md` (= `profilevault-agent-architecture.md`), `docs/specs/SPEC-00…09`, `docs/specs/SPIKE-ke-hoach.md`.
+**Cập nhật:** 2026-10-14 (sau 005) · **Giai đoạn:** M0 · **Nguồn sự thật:** `docs/prd.md` (= `profilevault-prd.md`), `docs/architecture.md` (= `profilevault-agent-architecture.md`), `docs/specs/SPEC-00…09`, `docs/specs/SPIKE-ke-hoach.md`.
 
 File này để một phiên làm việc mới tiếp tục được từ chỗ dừng. Cập nhật sau mỗi feature.
 
@@ -21,8 +21,8 @@ File này để một phiên làm việc mới tiếp tục được từ chỗ 
 | 002 | `packages/fury-client`: giao diện, adapter HTTP (ánh xạ endpoint `TODO(SPIKE-P2)`), bộ theo dõi trạng thái, FakeFury | SPEC-01; SPEC-09 §3.1 | ✅ xong | 26 test; `specs/002-fury-client/`; endpoint giả định G8 |
 | 003 | `packages/health` phần 1: binding, sự kiện, kiểm proxy theo lịch, ngưỡng, lên mức, hạ mức/dừng R1–R7, detect-suite, đồng hồ giả | SPEC-02 §1–5, §7–10 (trừ §6) | ✅ xong | 27 test; `specs/003-health-levels/`; R1–R7, readiness, proxy check, scheduler, nối bootstrap |
 | 004 | `packages/health` phần 2: chuẩn hóa probe (`TODO(SPIKE-P3)`), 22 luật (SPEC-02 §6.4 có 22, không phải 21), checklist HMAC, `packages/host-info` (`TODO(SPIKE-P6)`) | SPEC-02 §6 | ✅ xong | 56 test health; `specs/004-consistency-rules/` |
-| 005 | `packages/gateway` M0: Fastify loopback, kiểm Host/Origin, phiên dashboard `/auth/open`, toàn bộ `/internal/*`, SSE, audit, mã lỗi HTTP | SPEC-05 §2–4.1, §5.2, §7, §9–11 | 🔄 đang làm | |
-| 006 | `apps/dashboard` + tray + toast: 8 trang, wizard gắn kênh, khai báo một chạm, biểu đồ, Chờ bạn, Cài đặt | SPEC-07 | ⏳ chưa làm | |
+| 005 | `packages/gateway` M0: Fastify loopback, kiểm Host/Origin, phiên dashboard `/auth/open`, toàn bộ `/internal/*`, SSE, audit, mã lỗi HTTP | SPEC-05 §2–4.1, §5.2, §7, §9–11 | ✅ xong | 21 test; `specs/005-gateway-internal/`; Runner facade chờ 007 |
+| 006 | `apps/dashboard` + tray + toast: 8 trang, wizard gắn kênh, khai báo một chạm, biểu đồ, Chờ bạn, Cài đặt | SPEC-07 | 🔄 đang làm | |
 | 007 | `packages/runner`: Flow contract, `ctx.ui`, humanGate, Runner, lịch + chạy bù, linter `tools/eslint-plugin-pv`; pack `generic/session-check` và `youtube/session-check` với fixture HTML | SPEC-03; SPEC-04 §2.1–2.2, §3, §4 | ⏳ chưa làm | |
 | — | Bước 5: `spikes/` P1–P7 + `docs/specs/SPIKE-bao-cao.md` (mẫu trống) | SPIKE-ke-hoach | ⏳ chưa làm | Không chạy spike |
 
@@ -70,6 +70,11 @@ Những điểm `docs/` không trả lời; đã chọn phương án nhất quá
 | G23 | A6: WebRTC IP nội bộ (RFC1918, mDNS) không coi là rò | 004 | SPEC-02 nói "⊆ {exit.ip} hoặc rỗng" không bàn IP nội bộ |
 | G24 | D1/E1 chỉ báo cáo; R2/R3 đã áp ở kiểm proxy (003); R4 loại trừ D1/E1 | 004 | SPEC-02 §4.1 |
 | G25 | Lịch sử sửa luật ghi `settings_history` key `consistency_rule:<id>`; `periodicDays` ở `settings.consistency` | 004 | SPEC-02 chỉ nói "có lịch sử thay đổi" |
+| G26 | Gateway M0 chỉ phiên dashboard; `/internal/clients` (tạo/thu hồi token argon2id) cài sẵn cho trang Cài đặt, nhưng xác thực Bearer `/api/v1`/`/mcp` để M1 | 005 | SPEC-05 §1 (M0 REST nội bộ + phiên dashboard) |
+| G27 | Endpoint job/run/lịch ủy quyền `RunnerFacade` tiêm được; chưa có Runner → 422 `FLOW_DISABLED` "Runner chưa sẵn sàng" | 005 | Runner ở 007 |
+| G28 | Mã `/auth/open` và phiên dashboard giữ trong bộ nhớ (mất khi khởi động lại); `createOpenUrl()` cho tray | 005 | SPEC-05 §4.1 không nói lưu trữ |
+| G29 | Nhập probe nhận cả multipart `file` lẫn JSON `{ raw }` | 005 | SPEC-05 §7 ghi multipart; JSON tiện cho skill/test |
+| G30 | Biểu đồ SPEC-07 §8 tổng hợp trong gateway từ bảng §8; `settings.runner` gộp mặc định từ `config.runner`+`limits` để dashboard sửa | 005 | SPEC-07 §8 nói "server tổng hợp bằng SQL" |
 | G7 | Cơ chế seed lần chạy đầu: `registerSeeder` idempotent; 003/004 đăng ký ngưỡng và luật mặc định | 001 | SPEC-00 §11 nói "ghi luật nhất quán và ngưỡng mặc định" nhưng nội dung ở SPEC-02 |
 
 ## 5. TODO(SPIKE-Pn) còn lại
