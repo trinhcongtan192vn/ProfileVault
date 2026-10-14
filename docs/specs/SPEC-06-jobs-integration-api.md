@@ -118,11 +118,11 @@ Không cần scope (vẫn cần token hợp lệ). `{ "service": "ok", "fury": {
 ## 7. Package `@sctech/profilevault-contract`
 - Zod schema: request/response của §5, `Job`, `JobStatus`, mã lỗi SPEC-00 §9, input/output của từng flow chính thức (`youtube/upload`, `youtube/session-check`, flow generic).
 - Hằng `CONTRACT_VERSION = 'profilevault/v1'`; thay đổi phá vỡ → `profilevault/v2`, server hỗ trợ song song v1 ít nhất một phiên bản chính.
-- Client mẫu TypeScript (`ProfileVaultClient`) dùng `fetch`, có thử lại cho lỗi mạng và 429.
-- Bộ contract test (SPEC-09 §5) chạy được với server thật hoặc server giả lập.
+- Client mẫu TypeScript (`ProfileVaultClient`) dùng `fetch`, có thử lại cho lỗi mạng và 429 (theo `Retry-After`); lỗi là `ProfileVaultApiError { status, code, message, detail }`.
+- `@sctech/profilevault-contract/testing`: `MockProfileVault` (server giả lập cùng mã lỗi/HTTP status) và `defineContractSuite(name, target)` — bộ contract test (SPEC-09 §5) chạy được với server thật hoặc server giả lập.
 
 ## 8. Trace
-Nếu request có `source.traceparent`, span của job/run gắn làm con của trace đó (OpenTelemetry), để app gọi xem chung luồng.
+Nếu request có `source.traceparent`, span của job/run gắn làm con của trace đó (OpenTelemetry), để app gọi xem chung luồng. **Chưa cài** (M1 ghi `source.app/ref` vào audit; thêm OpenTelemetry khi có app gọi cần — decisions 2026-10-15).
 
 ## 9. Nghiệm thu (PRD §12, M1)
 - Kênh test ở L3: 5 job liên tiếp `done`, gửi lại cùng `idempotencyKey` trả job cũ, không có video trùng.

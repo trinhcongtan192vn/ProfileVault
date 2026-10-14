@@ -364,6 +364,8 @@ export class Runner {
     this.store.patchRun(id, { finishedAt: this.d.clock.nowIso(), needsUserJson: null, errorCode: error?.code ?? null, errorDetailJson: error?.detail ? JSON.stringify(error.detail) : null });
     this.store.patchJob(job.id, { resultJson: output === undefined ? null : JSON.stringify(output), errorCode: error?.code ?? null, errorDetailJson: error?.detail ? JSON.stringify(error.detail) : null });
     this.status(id, status);
+    // SPEC-06 §4: Runner hủy vì kênh bị dừng / hạ mức sau khi nhận → job `rejected`
+    if (status === 'cancelled' && (error?.code === 'BINDING_PAUSED' || error?.code === 'LEVEL_TOO_LOW')) this.store.patchJob(job.id, { status: 'rejected' });
     if (status === 'done' && run.flowId.endsWith('/session-check')) await this.d.health.recordSessionCheck(run.bindingId, { ...SessionCheckOutputSchema.parse(output), runId: id });
     if (status === 'done' && run.flowId === 'generic/probe' && output && typeof output === 'object' && 'raw' in output) {
       // Probe tự động (SPEC-04 §2.3): Health chuẩn hóa + chạy kiểm nhất quán; lỗi định dạng không làm hỏng run

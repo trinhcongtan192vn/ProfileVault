@@ -76,4 +76,4 @@ Thời lượng dự kiến: 3–5 ngày làm việc, cộng 7 ngày theo dõi c
 
 ## Thứ tự
 
-P1 → P2 → (P3, P5, P6 song song) → P4 → P7. P4 cần P2 (mở profile có CDP). Không bắt đầu M1 khi P4 chưa đạt.
+P1 → P2 → (P3, P5, P6 song song) → P4 → P7. P4 cần P2 (mở profile có CDP). **Không chạy M1 trên kênh thật khi P4 chưa đạt**: mã M1 đã viết (2026-10-15, theo yêu cầu chủ sản phẩm) nhưng flow ghi (có chế độ L2/L3) bị khóa trong Runner tới khi người xác nhận P4 đạt trên dashboard (SPEC-03 §5.9).

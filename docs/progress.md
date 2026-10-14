@@ -1,17 +1,14 @@
 # Tiến độ triển khai ProfileVault
 
-**Cập nhật:** 2026-10-14 (sau triển khai 006/007) · **Giai đoạn:** M0, chờ nghiệm thu desktop/live · **Nguồn sự thật:** `docs/prd.md` (= `profilevault-prd.md`), `docs/architecture.md` (= `profilevault-agent-architecture.md`), `docs/specs/SPEC-00…09`, `docs/specs/SPIKE-ke-hoach.md`.
+**Cập nhật:** 2026-10-15 (M1 + M2 xong code) · **Giai đoạn:** chờ spike live (P1, P4, P7) và nghiệm thu thủ công · **Nguồn sự thật:** `docs/prd.md` (= `profilevault-prd.md`), `docs/architecture.md` (= `profilevault-agent-architecture.md`), `docs/specs/SPEC-00…09`, `docs/specs/SPIKE-ke-hoach.md`.
 
 File này để một phiên làm việc mới tiếp tục được từ chỗ dừng. Cập nhật sau mỗi feature.
 
-**Điểm dừng hiện tại:** code M0 (001–007) xong và đã commit/push; `pnpm build`, `pnpm lint`, `pnpm test` xanh
-(255 Vitest + 7 Playwright fixture). 006 còn task T015 là nghiệm thu desktop Windows bằng tay (tray, toast, autostart).
-Feature 008 cũ (onboarding hướng dẫn) đã bỏ. Thay bằng **tự cài Fury** (SPEC-00 §11.1, constitution 2.0.0): service tự tải + cài Fury 0.3.22
-(ghim SHA-256) khi máy chưa có, dashboard có banner tiến độ/thử lại. Máy dev này đã cài Fury 0.3.22 + core 155.0.8059.39 (2026-10-14).
-**P2 xong (đạt một phần)**: adapter theo API thật Fury 0.3.22; ProfileVault tự đọc token, bật `FURY_API_PORT`; dashboard thấy Fury online.
-API công khai không có kiểm exit proxy → `checkExit` missing, chờ P5. Đang chạy P1 (người dùng theo dõi 7 ngày, profile test không proxy).
-Chưa chạy Fury/YouTube thật, đã chạy P6 (đạt); chưa chạy P1–P5, P7, chưa đủ điều kiện phát hành M0/live.
-Không bắt đầu M1 khi P4 chưa đạt (SPIKE-ke-hoach "Thứ tự").
+**Điểm dừng hiện tại:** code M0, M1, M2 xong, đã commit/push; `pnpm build`, `pnpm lint`, `pnpm test` xanh (300+ Vitest, 19 Playwright).
+- Fury thật 0.3.22 đã cài trên máy dev; ProfileVault tự cài Fury (SPEC-00 §11.1), tự bật API (`FURY_API_PORT`) và đọc token.
+- Spike: **P2** đạt một phần (adapter API thật), **P3** đạt một phần (bộ đọc probe theo mã nguồn; còn capture thật), **P5** đạt có giới hạn (tra exit; ASN xác nhận tay), **P6** đạt. **P1** đang chạy (người dùng theo dõi 7 ngày, profile test không proxy). **P4**, **P7** chưa chạy.
+- **M1 viết trước khi P4 đạt** theo yêu cầu người dùng (2026-10-15, decisions.md): flow có chế độ L2/L3 (`youtube/upload`) **bị khóa trong code** tới khi người bấm "Xác nhận P4 đạt" ở Cài đặt → Runner (`settings['spike.p4Passed']`). Locator Studio còn `TODO(SPIKE-P4)`.
+- Còn nghiệm thu thủ công: 006 T015 (tray, toast, autostart trên desktop), các kịch bản Live của SPEC-09 §6 (M-1, M1, M2).
 
 ## 1. Quy trình mỗi feature
 
@@ -38,7 +35,23 @@ Không bắt đầu M1 khi P4 chưa đạt (SPIKE-ke-hoach "Thứ tự").
 
 Ký hiệu: ⏳ chưa làm · 🔄 đang làm · ✅ xong · ⚠️ xong có ghi chú.
 
-**Không làm trong phiên này:** M1 (`youtube/upload`, Job service + `/api/v1`, MCP, token app ngoài, `generic/probe`), M2 (skill).
+## 2b. M1 và M2
+
+Làm trực tiếp theo `docs/` (không qua chu trình Spec Kit cho từng phần, decisions.md 2026-10-15); mỗi phần một commit, lint + test xanh trước commit.
+
+| Phần | Nội dung | Spec gốc | Trạng thái | Ghi chú |
+|---|---|---|---|---|
+| P3 | Bộ đọc probe `furyDetectSuiteConverter` theo `probe.js` của Fury | SPEC-02 §6.3 | ✅ | `9f3fef7`; còn capture thật để kiểm E2 |
+| P5 | Kiểm exit bằng tra IP (máy / `last_ip` proxy của Fury), không phát cờ khi không có bằng chứng | SPEC-01 §4 | ✅ | `f60d4e8`; thử thật VN/AS45899 |
+| F18 | `packages/jobs` Job service: kiểm SPEC-06 §3 bước 1–10, idempotency, file trong `allowed_roots` + SHA-256, giới hạn upload/ngày, accounts/flows/get/list/cancel | SPEC-06 | ✅ | `672e0a0`; 7 test |
+| F20 | `/api/v1/*` + Bearer (argon2, cache, thu hồi tức thì) + 429; MCP `/mcp` 15 tool lọc scope; audit client | SPEC-05 §4.2, §6, §8; SPEC-06 §5 | ✅ | `672e0a0`; test tích hợp REST + client MCP SDK |
+| F17/F19 | `youtube/upload` (L2/L3, 11 bước), `generic/probe`, `generic/read-page`, `generic/open-and-wait` | SPEC-04 | ✅ | `bc2af05`; 12 test Playwright trên trang giả lập |
+| F20 | Contract package: `ProfileVaultClient`, `MockProfileVault`, `defineContractSuite` (chạy với server giả lập và thật) | SPEC-06 §7; SPEC-09 §5 | ✅ | `da23cb2` |
+| M1 UI | Xác nhận P4, gửi job từ dashboard, tóm tắt metadata ở gate L2 | SPEC-07 | ✅ | `8201dd2` |
+| F21 | Plugin skill `skills/profilevault` (router, account-setup, job-planner, health-check, flow-author) | SPEC-08 | ✅ | `03a3a9e`; test metadata + mẫu flow lint sạch |
+
+**Chưa làm / để sau:** trace OpenTelemetry theo `source.traceparent` (SPEC-06 §8 — không thêm dependency khi chưa cần); `notifications/progress` chỉ gửi trong `pv_jobs_wait` (MCP không trạng thái); khai báo header MCP trên Claude Desktop chờ P7; trình cài đặt NSIS đóng gói `node.exe` (SPEC-00 §11) — hiện dùng script `Open-ProfileVault`.
+
 
 ## 3. Câu hỏi mở
 
@@ -46,7 +59,7 @@ Ký hiệu: ⏳ chưa làm · 🔄 đang làm · ✅ xong · ⚠️ xong có ghi
 |---|---|---|---|
 | Q1 | Định dạng thật của Automation API Fury (endpoint, JSON) | SPEC-01 §4, SPIKE-P2 | **Đã trả lời** (P2, 2026-10-14): SPEC-01 §4 |
 | Q2 | Định dạng file probe của Fury | SPEC-02 §6.3, SPIKE-P3 | **Đã trả lời** từ mã nguồn `probe.js` (2026-10-15); còn kiểm capture thật |
-| Q3 | Fury có kiểm exit proxy không mở trình duyệt và phân loại ASN không | SPEC-01 §4, SPIKE-P5 | Chờ spike P5; mặc định `asnType = unknown` + `asn_attestations` |
+| Q3 | Fury có kiểm exit proxy không mở trình duyệt và phân loại ASN không | SPEC-01 §4, SPIKE-P5 | **Đã trả lời** (P5, 2026-10-15): Fury không có; ProfileVault tra exit; ASN xác nhận tay |
 | Q4 | Đọc GPU/màn hình trên Windows không cần admin | SPIKE-P6 | **Đã trả lời 2026-10-14:** đọc được, ~170 ms, không cần admin; VRAM không đáng tin (trần 4 GB) — xem SPIKE-bao-cao |
 | Q5 | Yêu cầu triển khai ghi "21 luật" nhưng SPEC-02 §6.4 liệt kê 22 (A1–A6, B1–B4, C1–C3, D1–D5, E1–E4) | SPEC-02 §6.4 | Đã cài 22; người duyệt xác nhận |
 
@@ -93,6 +106,14 @@ Những điểm `docs/` không trả lời; đã chọn phương án nhất quá
 | G36 | Checkpoint phiên bản 1 giữ state, kết quả bước, tên bước, gate results và chỉ số gate cuối từng bước; replay flow bỏ bước đã xong | 007 | Cần khôi phục giá trị trả về của step/gate khi tiến trình tắt |
 | G37 | Selector/URL session-check hiện dùng fixture + TODO(SPIKE-P4); test CDP dùng Chromium thường và FakeFury | 007 | Chưa có bằng chứng live P4 |
 | G38 | Pack có dist/index.js xuất mảng flows; nạp pack chính thức và extensions/flows, lint TS/JS trước import, kiểm JSON Schema bằng Ajv | 007 | Cơ chế entry module chưa được SPEC-03 chốt; Ajv ghi trong decisions.md |
+| G39 | Job service gửi `mode`: binding L3 + flow có L3 → `L3`, ngược lại `L2`; Runner kiểm lại mức trước khi mở profile | M1 | SPEC-06 §3 |
+| G40 | Client đặc biệt `dashboard` gửi qua `POST /internal/jobs`, có mọi scope, đi qua cùng kiểm tra; `scheduler` gọi Runner trực tiếp như M0 | M1 | SPEC-06 §2 |
+| G41 | Cache xác thực token theo sha256(token) trong bộ nhớ; thu hồi kiểm CSDL mỗi request; `last_used_at` ghi tối đa mỗi phút | M1 | argon2 mỗi request quá chậm |
+| G42 | MCP không trạng thái: mỗi request một `McpServer` chỉ đăng ký tool trong scope; `pv_jobs_wait` nghe bus `run.status_changed` | M1 | SPEC-05 §6 |
+| G43 | Phụ đề trong `youtube/upload` là file `{ path, sha256, language }` để đi qua kiểm SHA-256 | M1 | SPEC-04 §5.1 chỉ có `{ path, language }`; decisions.md |
+| G44 | `generic/probe` gọi `window.furyProbe()` trên `probe_url` Fury trả khi mở profile; flow generic được thêm domain loopback của chính manifest | M1 | SPEC-04 §2.3 |
+| G45 | Gate L2 kèm `summary` = input của job, file chỉ còn tên + 12 ký tự SHA | M1 | SPEC-07 §4.4 |
+| G46 | Runner hủy vì dừng/hạ mức → run `cancelled`, job `rejected` | M1 | SPEC-06 §4 |
 | G7 | Cơ chế seed lần chạy đầu: `registerSeeder` idempotent; 003/004 đăng ký ngưỡng và luật mặc định | 001 | SPEC-00 §11 nói "ghi luật nhất quán và ngưỡng mặc định" nhưng nội dung ở SPEC-02 |
 
 ## 5. TODO(SPIKE-Pn) còn lại
@@ -101,6 +122,8 @@ Cập nhật sau mỗi feature (lệnh: `grep -rn --exclude-dir=dist "TODO(SPIKE
 
 | Spike | File | Nội dung |
 |---|---|---|
+| SPIKE-P4 | `packages/runner/src/runner.ts` | Vòng đời CDP Fury (launch → connectOverCDP → stop) chưa thử với Fury thật |
+| SPIKE-P4 | `packs/youtube/data/locators.en.json`, `packs/youtube/src/flows/{session-check,upload}.ts` | Locator/URL/thời gian chờ YouTube Studio giả định; chốt bằng Playwright Inspector trên kênh test |
 
 ## 6. Thay đổi với `docs/`
 
@@ -119,4 +142,6 @@ pnpm dev            # apps/service qua tsx (PV_APPDATA_DIR / PV_LOCALAPPDATA_DIR
 Mở app bản thử từ mã nguồn: bấm đúp `Open-ProfileVault.cmd` (hoặc `.vbs`; Git Bash: `./open-profilevault.sh`).
 Script chạy `tools/launch-local.ps1`: lần đầu hỏi rồi `pnpm install`, mỗi lần `pnpm build`, khởi động dịch vụ với dữ liệu riêng
 `.pv-data/local` (đã gitignore) và mở dashboard. Khi dịch vụ đang chạy, bấm lại chỉ mở dashboard. Cần Node 22 + pnpm 10.
-Đang chạy: menu tray → "Mở dashboard".
+Đang chạy: menu tray → "Mở dashboard" (hoặc bấm lại lối tắt).
+
+Tích hợp app ngoài: tạo token ở Cài đặt → Ứng dụng kết nối; REST `http://127.0.0.1:50410/api/v1`, MCP `http://127.0.0.1:50410/mcp` (Bearer). Client mẫu và contract test: `@sctech/profilevault-contract` (`ProfileVaultClient`, `/testing`). Skill Claude: `skills/profilevault/README.md`.

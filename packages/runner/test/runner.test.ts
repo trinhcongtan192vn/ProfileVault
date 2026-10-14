@@ -42,6 +42,7 @@ describe('Runner queue và ownership', () => {
     h = await runnerHarness(); const b = await h.binding(1, 0);
     const low = await h.runner.enqueue({ bindingId: b.id, flowId: 'test/check', idempotencyKey: 'low' });
     await h.runner.tick(); expect(h.runner.getRun(low.id)).toMatchObject({ status: 'cancelled', errorCode: 'LEVEL_TOO_LOW' });
+    expect(h.runner.getJob(low.jobId)?.status).toBe('rejected'); // SPEC-06 §4
     expect(h.fake.requests().some((r) => r.path === '/v1/profiles/start')).toBe(false);
     h.bundle.repos.bindings.setLevel(b.id, 1, h.clock.nowIso()); h.fake.setOpen('p1', true, 'app');
     const waiting = await h.runner.enqueue({ bindingId: b.id, flowId: 'test/check', idempotencyKey: 'busy' });

@@ -53,7 +53,7 @@ Một server Fastify duy nhất trên loopback phục vụ: dashboard (file tĩn
 Bộ lọc: `flow_filter_json` (mẫu glob trên `flowId`, ví dụ `["youtube/upload"]`), `binding_filter_json` (danh sách `bindingId` hoặc `["*"]`). Ngoài bộ lọc → `FORBIDDEN_SCOPE`.
 
 ### 5.2 Hành động chỉ dành cho người (chỉ phiên dashboard)
-Lên mức; gỡ dừng có lý do do người gỡ (R1, R2, R7); xác nhận checklist tài khoản; xác nhận loại ASN; nhập kết quả detect-suite; sửa ngưỡng và luật nhất quán; tạo/thu hồi token; trả lời gate `review_before_final` của chế độ L2. Không có tool MCP hay endpoint `/api/v1` nào làm các việc này.
+Lên mức; gỡ dừng có lý do do người gỡ (R1, R2, R7); xác nhận checklist tài khoản; xác nhận loại ASN; nhập kết quả detect-suite; sửa ngưỡng và luật nhất quán; tạo/thu hồi token; trả lời gate `review_before_final` của chế độ L2; xác nhận spike P4 (mở khóa flow ghi). Không có tool MCP hay endpoint `/api/v1` nào làm các việc này.
 
 ### 5.3 Mức rủi ro
 | Mức | Ví dụ | Điều kiện |
@@ -86,7 +86,7 @@ Lên mức; gỡ dừng có lý do do người gỡ (R1, R2, R7); xác nhận ch
 | `pv_probe_import` | ops.write | `HealthService.importProbe` (đường dẫn file) |
 | `pv_consistency_run` | ops.write | `HealthService.runConsistency` |
 
-- Khi client giữ phiên MCP và gọi `pv_jobs_submit` có `progressToken`, Gateway gửi `notifications/progress` khi run đổi bước/trạng thái.
+- Không trạng thái: mỗi request tạo một server MCP chỉ đăng ký tool trong scope của token. `notifications/progress` gửi trong `pv_jobs_wait` (có `progressToken`) mỗi khi run đổi bước/trạng thái; `pv_jobs_submit` trả ngay.
 - Lỗi tool trả `isError: true` với nội dung JSON `{ code, message, detail }` theo SPEC-00 §9.
 
 ## 7. API nội bộ cho dashboard (`/internal`)
@@ -110,6 +110,8 @@ Nhóm endpoint (chi tiết dữ liệu theo SPEC-07):
 | Lịch | `GET/POST /internal/schedules`, `PATCH/DELETE /internal/schedules/:id` |
 | Cài đặt | `GET/PUT /internal/settings/thresholds`, `GET /internal/rules`, `PATCH /internal/rules/:id`, `GET/PUT /internal/settings/runner` |
 | Client | `GET/POST /internal/clients`, `POST /internal/clients/:id/revoke` |
+| Job (client `dashboard`) | `POST /internal/jobs` (cùng kiểm tra Job service) |
+| Spike P4 | `GET/PUT /internal/settings/p4` (chỉ người; mở khóa flow có chế độ L2/L3) |
 | Biểu đồ | `GET /internal/charts/:name?bindingId=&from=&to=&bucket=day|week` |
 | Xuất | `GET /internal/export/:dataset.csv` |
 | Hệ thống | `GET /internal/system` (hàng đợi, profile đang chạy, RAM, chế độ bận, tạm dừng toàn cục), `POST /internal/system/global-pause` |
@@ -117,7 +119,7 @@ Nhóm endpoint (chi tiết dữ liệu theo SPEC-07):
 Nhập/xuất dữ liệu đều theo schema Zod trong `packages/contract`.
 
 ## 8. Giới hạn tần suất
-- Theo client: `rate_limit_per_min` (mặc định 120); vượt → 429 `RATE_LIMITED` với `retryAfter` (giây).
+- Theo client: `rate_limit_per_min` (mặc định 120, cửa sổ trượt 60 s trong bộ nhớ); vượt → 429 `RATE_LIMITED` với `retryAfter` (giây) và header `Retry-After`.
 - Phiên dashboard: không giới hạn.
 
 ## 9. Audit

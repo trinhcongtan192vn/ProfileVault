@@ -55,7 +55,7 @@ Xanh toàn bộ lint + test mới được commit/merge.
 5. Gateway chỉ bind loopback; kiểm `Host`; không CORS.
 6. Không có thao tác nào đặt nội dung công khai/hẹn giờ công khai; flow chỉ thao tác trang qua `ctx.ui`; linter chặn thao tác thô.
 7. L0 không bao giờ bật CDP; Runner chỉ chạy trên profile do chính nó mở; CDP chỉ bật trong lúc chạy.
-8. Các hành động chỉ dành cho người (lên mức, gỡ dừng do người, xác nhận checklist, trả lời gate L2) chỉ có trên dashboard.
+8. Các hành động chỉ dành cho người (lên mức, gỡ dừng do người, xác nhận checklist, trả lời gate L2, xác nhận spike P4) chỉ có trên dashboard.
 9. Health service chỉ báo và chặn, không tự sửa cấu hình profile.
 10. Mọi feature có test (unit/integration theo SPEC-09); không merge khi test đỏ.
 11. Tài liệu tiếng Việt, identifier tiếng Anh.

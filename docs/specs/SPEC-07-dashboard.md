@@ -88,7 +88,7 @@ Thẻ (tab):
 Danh sách run `needs_user`, mới nhất trên cùng: kênh, flow, lý do, thông điệp, thời gian còn lại trước khi hết hạn, các nút lựa chọn của gate, nút "Mở run". Gate `review_before_final` (L2) hiện tóm tắt metadata đã điền để người đối chiếu trong cửa sổ profile. Cộng thêm các mục cần người không phải run: dừng chờ gỡ, checklist sắp hết hạn, ASN chưa phân loại, phiên bản Fury chưa có detect-suite.
 
 ### 4.5 Job và run
-- `/jobs`: bảng job (client, flow, kênh, trạng thái, tạo lúc, kết quả/mã lỗi), lọc theo trạng thái/client/kênh.
+- `/jobs`: form **Gửi job** (flow, kênh, input JSON — client `dashboard`, cùng kiểm tra Job service); bảng job (client, flow, kênh, chế độ, trạng thái, tạo lúc, kết quả/mã lỗi), lọc theo trạng thái/client/kênh.
 - `/runs/:id`: các bước (trạng thái, số lần thử, thời gian), log, ảnh/trace khi lỗi (tải về), đầu vào (ẩn đường dẫn đầy đủ nếu dài), kết quả; nút hủy; gate đang chờ.
 
 ### 4.6 Hệ thống
@@ -105,7 +105,7 @@ Danh sách lịch (flow, mục tiêu, ngày, khung giờ, bật/tắt, lượt k
 | Luật nhất quán | Bật/tắt, mức, tham số từng luật; lịch sử thay đổi |
 | Detect-suite | Nhập kết quả theo phiên bản Fury (toàn cục hoặc theo kênh) |
 | ASN | Danh sách ASN đã xác nhận loại; thêm/sửa |
-| Runner | Giới hạn đồng thời, RAM mỗi profile, thời gian chờ profile/gate, độ trễ thao tác, giới hạn upload/ngày |
+| Runner | Xác nhận spike P4 (mở khóa flow upload L2/L3, có hộp xác nhận nêu tiêu chí); giới hạn đồng thời, RAM mỗi profile, thời gian chờ profile/gate, độ trễ thao tác, giới hạn upload/ngày |
 | Ứng dụng kết nối | Tạo token (tên, scope, bộ lọc), hiển thị token một lần, thu hồi, lần dùng cuối |
 | Xuất dữ liệu | CSV: sự kiện, kiểm proxy, run, đổi mức, kết quả nhất quán |
 

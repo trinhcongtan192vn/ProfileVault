@@ -32,11 +32,11 @@ Pack nền tảng cung cấp cho flow generic qua `pack.json` khóa `generic`:
 - Bước `classify` (idempotent): URL khớp `challengeUrlPattern` → `challenge`; khớp `loggedOutUrlPattern` → `logged_out`; còn lại → `logged_in`.
 - Output: `{ state: 'logged_in' | 'logged_out' | 'challenge' | 'wrong_account' | 'unknown' }`. Flow **không** dùng `humanGate` và không lỗi khi phiên hỏng; trả trạng thái để Health service ghi sự kiện (SPEC-02 §5). `challenge` được ánh xạ thành `run.challenge`.
 
-### 2.3 `generic/probe` **[SPIKE-P3]**
-- Bước `open`: mở trang probe của Fury cho profile (địa chỉ lấy từ Fury hoặc cấu hình `settings.probe.url`).
-- Bước `capture`: chờ probe chạy xong (tối đa 120 s); lấy capture bằng hàm đọc tĩnh (`page.evaluate` với hàm cố định đọc biến kết quả của trang) hoặc nút xuất của trang.
-- Output: `{ raw: object }` → Runner chuyển cho `HealthService.importProbe(binding, raw, source='flow')`.
-- `manifest.site` = địa chỉ trang probe.
+### 2.3 `generic/probe` (đã xác minh từ mã nguồn Fury, SPIKE-P3)
+- Bước `open`: mở `ctx.fury.probeUrl` — địa chỉ trang probe detect-suite Fury trả kèm kết quả mở profile (`probe_url`, relay loopback `http://127.0.0.1:<relay_port>/<token>/probe/`). Không có → `FURY_CAPABILITY_MISSING`.
+- Bước `capture`: chờ `window.furyProbe` có mặt, gọi bằng hàm đọc tĩnh `page.evaluate(() => window.furyProbe())` (tối đa 120 s); kết quả phải có `__schema = 1`, ngược lại `SITE_CHANGED`.
+- Output: `{ raw: object }` → Runner chuyển cho `HealthService.importProbe(binding, raw, source='flow')` (lỗi nhập không làm hỏng run, chỉ ghi log).
+- `manifest.site = ['127.0.0.1']`; Runner cho flow generic dùng domain của nền tảng binding cộng domain loopback của manifest.
 
 ### 2.4 `generic/read-page`
 - Input: `{ url: string; fields: { name: string; locator: LocatorSpec }[] }` với `LocatorSpec = { role?: string; name?: string; text?: string; css?: string }`.
@@ -74,7 +74,7 @@ Pack nền tảng cung cấp cho flow generic qua `pack.json` khóa `generic`:
 Ngôn ngữ giao diện Studio ghim **English** để selector ổn định; người vận hành đặt trong cài đặt tài khoản YouTube. Đây là điểm lệch chấp nhận với ngôn ngữ trình duyệt (luật C2, mức `info`).
 
 ### 3.3 Locator
-Locator của mọi màn hình Studio để trong `packs/youtube/data/locators.en.json` (role + accessible name, text, hoặc CSS cho `input[type=file]`). Flow chỉ tham chiếu khóa (ví dụ `upload.titleBox`). Khi Studio đổi giao diện, sửa file này trước, chỉ sửa mã khi luồng màn hình đổi. Giá trị cụ thể chốt ở **[SPIKE-P4]**.
+Locator của mọi màn hình Studio để trong `packs/youtube/data/locators.en.json` (`LocatorSpec`: role + accessible name, text, hoặc CSS cho `input[type=file]`; flow tạo locator bằng `locate()` của runner). Flow chỉ tham chiếu khóa (ví dụ `upload.titleBox`). Khi Studio đổi giao diện, sửa file này trước, chỉ sửa mã khi luồng màn hình đổi. Giá trị cụ thể chốt ở **[SPIKE-P4]**.
 
 ### 3.4 Thao tác cấm (`data/forbidden.json`)
 Lựa chọn hiển thị "Public", "Unlisted", "Schedule"; ô "Set as instant Premiere"; nút "Publish". (Cộng danh sách toàn cục SPEC-03 §7.1.)
@@ -105,7 +105,7 @@ Output:
 const UploadInput = z.object({
   video: z.object({ path: z.string(), sha256: z.string().length(64) }),
   thumbnail: z.object({ path: z.string(), sha256: z.string().length(64) }).optional(),
-  captions: z.array(z.object({ path: z.string(), language: z.string() })).max(5).optional(),
+  captions: z.array(z.object({ path: z.string(), sha256: z.string().length(64), language: z.string() })).max(5).optional(), // có sha256 để Job service kiểm (decisions 2026-10-15)
   title: z.string().min(1).max(100),
   description: z.string().max(5000),
   madeForKids: z.boolean(),

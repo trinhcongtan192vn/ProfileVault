@@ -82,6 +82,7 @@ interface FlowContext<I> {
   fail(code: string, message: string, detail?: object): never;
   log(msg: string, data?: object): void;
   artifact(name: string, data: Buffer | string): Promise<string>;
+  fury: { probeUrl?: string };                    // thông tin lần mở profile của Fury
   ai?: AiHelper;                                 // M3, chỉ dùng trong bước fragile
 }
 
@@ -164,7 +165,7 @@ Theo thứ tự, ngay trước khi chuyển `launching`:
 Runner **chỉ chạy trên profile do chính nó mở** (đảm bảo CDP chỉ bật trong lúc chạy và không chen vào phiên người đang dùng).
 
 ### 5.4 Vòng đời CDP **[SPIKE-P4]**
-1. `FuryClient.launch(profile, { cdp: true })` → `cdpEndpoint`; ghi `launched_by_run = 1`.
+1. `FuryClient.launch(profile, { cdp: true })` → `cdpEndpoint` (+ `probeUrl`, đưa cho flow qua `ctx.fury.probeUrl`); ghi `launched_by_run = 1`.
 2. `chromium.connectOverCDP(cdpEndpoint)`; dùng `browser.contexts()[0]` (context có sẵn chứa phiên đăng nhập); tạo tab mới làm `ctx.page`.
 3. Chạy flow.
 4. Kết thúc (mọi trạng thái kết thúc, kể cả lỗi/hủy/timeout): đóng tab của flow → ngắt kết nối Playwright → `FuryClient.stop(profile)` → xác nhận `getStatus().open == false` (tối đa 15 s, sau đó ghi cảnh báo).
@@ -186,6 +187,9 @@ Khi khởi động, với mọi run ở `launching | running | finalizing`:
 ### 5.8 Kết quả
 - `done`: `output` hợp lệ theo `manifest.output` → ghi vào `jobs.result_json`.
 - Mọi kết thúc phát `run.status_changed`; Health service nhận để ghi sự kiện (SPEC-02 §5).
+
+## 5.9 Khóa flow ghi tới khi P4 đạt
+Flow có `modes` (ghi lên nền tảng, ví dụ `youtube/upload`) bị từ chối `FLOW_DISABLED` (`reason: p4_not_passed`) ở `enqueue` và trước khi mở profile, cho tới khi người xác nhận spike P4 đạt trên dashboard (Cài đặt → Runner; `settings['spike.p4Passed'] = true`, hành động chỉ dành cho người). Gate `review_before_final` kèm `summary` = input của job (file chỉ còn tên + 12 ký tự SHA) để người đối chiếu.
 
 ## 6. Kết quả chế độ L2
 Run L2 kết thúc `done` khi người chọn `done_correct` hoặc `done_fixed` và bước đọc kết quả sau đó thành công. `jobs.result_json.l2Review = 'correct' | 'fixed'`.
